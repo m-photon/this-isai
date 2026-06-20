@@ -40,6 +40,7 @@ ToggleButton.Parent = MainFrame
 
 -- // State & Animation Variables
 local playing = false
+local isSpawning = false
 local SINE = 0
 local RAD = math.rad
 local COS = math.cos
@@ -51,70 +52,109 @@ local fakeCharModel = nil
 local loopConnection = nil
 local physicsConnection = nil
 
--- Rig Constraints for the Fake Character Model
+-- Rig Constraints
 local ROOTC0 = CF(0, 0, 0) * ANGLES(RAD(-90), RAD(0), RAD(180))
 local NECKC0 = CF(0, 1, 0) * ANGLES(RAD(-90), RAD(0), RAD(180))
 local RIGHTSHOULDERC0 = CF(-0.5, 0, 0) * ANGLES(RAD(0), RAD(90), RAD(0))
 local LEFTSHOULDERC0 = CF(0.5, 0, 0) * ANGLES(RAD(0), RAD(-90), RAD(0))
 
+-- // Cleanup
+local function CleanupReanimation()
+	playing = false
+	isSpawning = false
+	ToggleButton.Text = "OFF"
+	ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	
+	if loopConnection then loopConnection:Disconnect() end
+	if physicsConnection then physicsConnection:Disconnect() end
+	
+	if fakeCharModel then 
+		fakeCharModel:Destroy() 
+		fakeCharModel = nil
+	end
+	
+	local char = player.Character
+	if char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			workspace.CurrentCamera.CameraSubject = hum
+			hum.Health = 0 -- Force respawn cleanly
+		end
+	end
+end
+
+player.CharacterAdded:Connect(function(newChar)
+	if playing then
+		CleanupReanimation()
+	end
+end)
+
 -- // Toggle Logic
 ToggleButton.MouseButton1Click:Connect(function()
-	if playing then return end 
+	if isSpawning then return end -- Prevent clicking while it's loading the bypass
 	
-	-- Fetch the character dynamically at the moment of the click
+	if playing then 
+		CleanupReanimation()
+		return 
+	end 
+	
 	local char = player.Character
 	if not char or not char:FindFirstChild("Humanoid") then return end
 	
-	-- Visible Rig Check
 	if char.Humanoid.RigType ~= Enum.HumanoidRigType.R6 then
 		ToggleButton.Text = "MUST BE R6!"
 		ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
 		task.wait(2)
-		if not playing then
-			ToggleButton.Text = "OFF"
-			ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-		end
+		ToggleButton.Text = "OFF"
+		ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 		return
 	end
 	
-	playing = true
-	ToggleButton.Text = "FE ACTIVE"
-	ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-	ToggleButton.AutoButtonColor = false
+	isSpawning = true
+	ToggleButton.Text = "LOADING (5s)..."
+	ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
 	
-	-- // Setup Reanimation
+	-- 1. Create the Fake Character
 	char.Archivable = true
 	fakeCharModel = char:Clone()
 	fakeCharModel.Name = "FakeCharacter"
-	
-	for _, v in pairs(fakeCharModel:GetChildren()) do
-		if v:IsA("LocalScript") or v:IsA("Script") or v:IsA("Accessory") then
-			v:Destroy()
-		end
-		if v:IsA("BasePart") then
-			v.Transparency = 1 
-			v.CanCollide = false
-		end
-	end
-	
-	-- Ensure the fake character starts exactly where you are standing
-	fakeCharModel:SetPrimaryPartCFrame(char:GetPrimaryPartCFrame())
-	fakeCharModel.Parent = workspace
 	char.Archivable = false
 	
-	if char:FindFirstChild("Animate") then char.Animate.Disabled = true end
-	local humanoid = char:FindFirstChildOfClass("Humanoid")
-	if humanoid then 
-		humanoid.BreakJointsOnDeath = false
-		humanoid.Health = 0 
+	for _, v in pairs(fakeCharModel:GetChildren()) do
+		if v:IsA("LocalScript") or v:IsA("Script") then
+			v:Destroy()
+		end
+		if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+			v.Transparency = 1 
+			-- WE KEEP CANCOLLIDE ON FOR THE FAKE CHARACTER SO IT DOESNT FALL INTO THE VOID
+		end
 	end
-	char:BreakJoints()
 	
-	settings().Physics.AllowSleep = false
-	settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalThrottle.Disabled
+	fakeCharModel:SetPrimaryPartCFrame(char:GetPrimaryPartCFrame())
+	fakeCharModel.Parent = workspace
+	
+	-- 2. The Original Script's FE Network Ownership Trick
+	-- Swap to the fake character to claim network ownership
+	player.Character = fakeCharModel
+	workspace.CurrentCamera.CameraSubject = fakeCharModel:FindFirstChildOfClass("Humanoid")
+	task.wait(2.5)
+	
+	-- Swap back to real character
+	player.Character = char
+	task.wait(3)
+	
+	-- 3. Execute Perma-Death
+	if char.Humanoid.RigType == Enum.HumanoidRigType.R6 then
+		char:BreakJoints()
+	end
+	
+	if char:FindFirstChild("Animate") then char.Animate.Disabled = true end
+	char.Humanoid.AutoRotate = false
+	
+	-- Redirect Camera back to the invisible fake character
 	workspace.CurrentCamera.CameraSubject = fakeCharModel:FindFirstChildOfClass("Humanoid")
 	
-	-- // Math Setup
+	-- Math Setup for Fake Character
 	local FakeRoot = fakeCharModel.HumanoidRootPart.RootJoint
 	local FakeNeck = fakeCharModel.Torso.Neck
 	local FakeRS = fakeCharModel.Torso["Right Shoulder"]
@@ -122,14 +162,16 @@ ToggleButton.MouseButton1Click:Connect(function()
 	local FakeRH = fakeCharModel.Torso["Right Hip"]
 	local FakeLH = fakeCharModel.Torso["Left Hip"]
 	
-	-- Core tracking loops
+	-- 4. Start the Animation & Teleportation Loops
 	loopConnection = runService.Stepped:Connect(function()
+		if not fakeCharModel or not fakeCharModel:FindFirstChild("HumanoidRootPart") then return end
 		SINE = SINE + 2
 		
 		local fakeHum = fakeCharModel:FindFirstChildOfClass("Humanoid")
 		local velocity = (fakeCharModel.HumanoidRootPart.Velocity * Vector3.new(1, 0, 1)).Magnitude
 		local walkSpeedValue = 8 / (fakeHum.WalkSpeed / 16)
 		
+		-- Procedural Math (Applied to the Invisible Fake Character)
 		if velocity > 1 then
 			-- /// WALKING ///
 			FakeRoot.C0 = FakeRoot.C0:lerp(ROOTC0 * CF(0, 0, -0.05) * ANGLES(RAD(5), RAD(0), RAD(-7 * COS(SINE / walkSpeedValue))), 0.2)
@@ -156,33 +198,44 @@ ToggleButton.MouseButton1Click:Connect(function()
 			FakeLH.C1 = FakeLH.C1:lerp(CF(-0.5, 1, 0) * ANGLES(RAD(0), RAD(-90), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.1)
 		end
 		
-		fakeHum:Move(char:FindFirstChildOfClass("Humanoid").MoveDirection, true)
-		if char:FindFirstChildOfClass("Humanoid").Jump then fakeHum.Jump = true end
-		
+		-- Match REAL limbs to FAKE limbs
 		for _, part in pairs(char:GetChildren()) do
 			if part:IsA("BasePart") then
-				part.CanCollide = false
+				part.CanCollide = false -- Keep real limbs from tripping over the fake body
 				local targetPart = fakeCharModel:FindFirstChild(part.Name)
-				if targetPart then
+				if targetPart and part.Name ~= "HumanoidRootPart" then
 					part.CFrame = targetPart.CFrame
 				end
 			end
 		end
 		
+		-- Move real HumanoidRootPart out of bounds to avoid physics issues
 		if char:FindFirstChild("HumanoidRootPart") and fakeCharModel:FindFirstChild("Torso") then
 			char.HumanoidRootPart.CFrame = CF(fakeCharModel.Torso.Position.X, -150, fakeCharModel.Torso.Position.Z)
 		end
+		
+		-- Forward WASD inputs to the invisible character
+		if char:FindFirstChildOfClass("Humanoid") then
+			fakeHum:WalkToPoint(fakeCharModel.HumanoidRootPart.Position + char:FindFirstChildOfClass("Humanoid").MoveDirection * 100)
+			if char:FindFirstChildOfClass("Humanoid").Jump then fakeHum.Jump = true end
+		end
 	end)
 	
+	-- 5. The Netless Velocity Loop (Exactly from your original script)
 	physicsConnection = runService.Heartbeat:Connect(function()
 		for _, part in pairs(char:GetChildren()) do
 			if part:IsA("BasePart") then
 				if part.Name == "HumanoidRootPart" then
-					part.Velocity = Vector3.new(30, 0, 30)
+					part.Velocity = Vector3.new(20, 0, 20)
 				else
-					part.Velocity = Vector3.new(-30, 0, -30)
+					part.Velocity = Vector3.new(-17.7, 0, -17.7)
 				end
 			end
 		end
 	end)
+	
+	playing = true
+	isSpawning = false
+	ToggleButton.Text = "FE ACTIVE"
+	ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
 end)
