@@ -47,10 +47,14 @@ Mouse.KeyDown:Connect(function(key)
         if target and target.Parent and target.Parent:FindFirstChildWhichIsA("Humanoid") then
             local targetChar = target.Parent
             local targetRoot = targetChar:FindFirstChild("HumanoidRootPart") or targetChar:FindFirstChild("Torso") or targetChar:FindFirstChild("UpperTorso")
+            local targetHum = targetChar:FindFirstChildWhichIsA("Humanoid")
+            
             local myChar = Player.Character
             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            local myHum = myChar and myChar:FindFirstChildWhichIsA("Humanoid")
             
-            if targetRoot and myRoot then
+            -- Make sure we have the parts, and we aren't targeting ourselves
+            if targetRoot and myRoot and myHum and targetChar ~= myChar then
                 flinging = true
                 Title.Text = "Flinging: " .. targetChar.Name
                 Title.TextColor3 = Color3.fromRGB(255, 0, 0)
@@ -58,39 +62,49 @@ Mouse.KeyDown:Connect(function(key)
                 -- Save original position to teleport back after the fling
                 local originalCFrame = myRoot.CFrame
                 
-                -- Apply the spinning force (Using the exact math from your original script)
+                -- Stop our character from fighting the spin
+                myHum.PlatformStand = true
+                
+                -- Apply the spinning force
                 local bav = Instance.new("BodyAngularVelocity")
                 bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-                bav.P = 1000000000000000000000000000
-                bav.AngularVelocity = Vector3.new(10000, 10000, 10000)
+                bav.P = math.huge
+                bav.AngularVelocity = Vector3.new(0, 999999, 0) -- Massive Y-axis spin
                 bav.Parent = myRoot
                 
-                -- Put character in jumping state to avoid floor friction stopping the fling
-                if myChar:FindFirstChildWhichIsA("Humanoid") then
-                    myChar:FindFirstChildWhichIsA("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
-                end
+                -- Apply aggressive tracking force
+                local bp = Instance.new("BodyPosition")
+                bp.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bp.P = math.huge
+                bp.Position = targetRoot.Position
+                bp.Parent = myRoot
                 
                 local startTime = tick()
                 local connection
                 
-                -- Heartbeat loop to stick to the target
+                -- Heartbeat loop to track the target
                 connection = RunService.Heartbeat:Connect(function()
-                    -- Stop flinging after 1.5 seconds or if target leaves/dies
-                    if tick() - startTime >= 1.5 or not targetRoot.Parent then
+                    -- Stop flinging after 1.5 seconds, or if target leaves/dies
+                    if tick() - startTime >= 1.5 or not targetRoot.Parent or not targetHum or targetHum.Health <= 0 then
                         connection:Disconnect()
                         if bav then bav:Destroy() end
+                        if bp then bp:Destroy() end
                         
                         -- Reset physics and position
                         myRoot.Velocity = Vector3.new(0, 0, 0)
                         myRoot.RotVelocity = Vector3.new(0, 0, 0)
                         myRoot.CFrame = originalCFrame
+                        myHum.PlatformStand = false
                         
                         flinging = false
                         Title.Text = "Hover + V to Fling"
                         Title.TextColor3 = Color3.fromRGB(255, 255, 255)
                     else
-                        -- Teleport inside the target continuously to apply physics damage
-                        myRoot.CFrame = targetRoot.CFrame
+                        -- Constantly update the BodyPosition to pull us into their character
+                        bp.Position = targetRoot.Position
+                        
+                        -- Force RotVelocity manually as a backup in case BodyAngularVelocity throttles
+                        myRoot.RotVelocity = Vector3.new(0, 50000, 0)
                     end
                 end)
             end
