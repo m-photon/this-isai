@@ -1,19 +1,19 @@
 -- // GUI Setup
 local player = game:GetService("Players").LocalPlayer
 local runService = game:GetService("RunService")
+local char = player.Character or player.CharacterAdded:Wait()
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "InspectorGUI"
--- If running via standard Studio, use PlayerGui. If executor, CoreGui is safer.
+ScreenGui.Name = "FE_InspectorGUI"
 ScreenGui.Parent = game:GetService("CoreGui") 
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 220, 0, 120)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -60) -- Centered
-MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -60)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 0)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
@@ -22,7 +22,7 @@ local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.Size = UDim2.new(1, 0, 0.35, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Inspector Anim"
+Title.Text = "FE Inspector Anim"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.Code
 Title.TextScaled = true
@@ -39,93 +39,153 @@ ToggleButton.Font = Enum.Font.Code
 ToggleButton.TextScaled = true
 ToggleButton.Parent = MainFrame
 
--- // Procedural Animation Variables
+-- // State & Animation Variables
 local playing = false
 local SINE = 0
 local RAD = math.rad
 local COS = math.cos
+local SIN = math.sin
 local CF = CFrame.new
 local ANGLES = CFrame.Angles
-local connection = nil
 
--- Base R6 C0 Joint Angles (Needed for math offsets and resetting)
+local fakeCharModel = nil
+local loopConnection = nil
+local physicsConnection = nil
+
+-- Rig Constraints for the Fake Character Model
 local ROOTC0 = CF(0, 0, 0) * ANGLES(RAD(-90), RAD(0), RAD(180))
 local NECKC0 = CF(0, 1, 0) * ANGLES(RAD(-90), RAD(0), RAD(180))
 local RIGHTSHOULDERC0 = CF(-0.5, 0, 0) * ANGLES(RAD(0), RAD(90), RAD(0))
 local LEFTSHOULDERC0 = CF(0.5, 0, 0) * ANGLES(RAD(0), RAD(-90), RAD(0))
-local RIGHTHIPC0 = CF(1, -1, 0) * ANGLES(RAD(0), RAD(90), RAD(0))
-local LEFTHIPC0 = CF(-1, -1, 0) * ANGLES(RAD(0), RAD(-90), RAD(0))
 
--- // The Toggle Logic
+-- // Create the underlying system for FE Replication
+local function SetupReanimation()
+	char.Archivable = true
+	fakeCharModel = char:Clone()
+	fakeCharModel.Name = "FakeCharacter"
+	
+	-- Strip client-side clutter from the replication model
+	for _, v in pairs(fakeCharModel:GetChildren()) do
+		if v:IsA("LocalScript") or v:IsA("Script") or v:IsA("Accessory") then
+			v:Destroy()
+		end
+		if v:IsA("BasePart") then
+			v.Transparency = 1 -- Keep it completely invisible
+			v.CanCollide = false
+		end
+	end
+	
+	fakeCharModel.Parent = workspace
+	char.Archivable = false
+	
+	-- Local Perma-Death: sever constraints so limbs become free physics parts
+	if char:FindFirstChild("Animate") then char.Animate.Disabled = true end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if humanoid then 
+		humanoid.BreakJointsOnDeath = false
+		humanoid.Health = 0 
+	end
+	char:BreakJoints()
+	
+	-- Force network settings for your real player physics control
+	settings().Physics.AllowSleep = false
+	settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalThrottle.Disabled
+	
+	-- Retarget the camera tracking onto the hidden animation rig
+	workspace.CurrentCamera.CameraSubject = fakeCharModel:FindFirstChildOfClass("Humanoid")
+end
+
+-- // Toggle Logic
 ToggleButton.MouseButton1Click:Connect(function()
-	playing = not playing
+	if playing then return end -- This reanimation layout is a permanent state until respawn
 	
-	local char = player.Character
-	if not char or not char:FindFirstChild("Humanoid") then return end
-	
-	-- Rig Check (Script math is built for R6)
 	if char.Humanoid.RigType ~= Enum.HumanoidRigType.R6 then
-		warn("Inspector Animation requires an R6 rig to function properly!")
-		playing = false
+		warn("FE Reanimation requires an R6 rig!")
 		return
 	end
-
-	local RootJoint = char.HumanoidRootPart:FindFirstChild("RootJoint")
-	local Neck = char.Torso:FindFirstChild("Neck")
-	local RightShoulder = char.Torso:FindFirstChild("Right Shoulder")
-	local LeftShoulder = char.Torso:FindFirstChild("Left Shoulder")
-	local RightHip = char.Torso:FindFirstChild("Right Hip")
-	local LeftHip = char.Torso:FindFirstChild("Left Hip")
-
-	if playing then
-		-- Turn ON
-		ToggleButton.Text = "ON"
-		ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+	
+	playing = true
+	ToggleButton.Text = "FE ACTIVE"
+	ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+	ToggleButton.AutoButtonColor = false
+	
+	-- Initialize the network-ownership reanimation state
+	SetupReanimation()
+	
+	local FakeRoot = fakeCharModel.HumanoidRootPart.RootJoint
+	local FakeNeck = fakeCharModel.Torso.Neck
+	local FakeRS = fakeCharModel.Torso["Right Shoulder"]
+	local FakeLS = fakeCharModel.Torso["Left Shoulder"]
+	local FakeRH = fakeCharModel.Torso["Right Hip"]
+	local FakeLH = fakeCharModel.Torso["Left Hip"]
+	
+	-- Core tracking loops
+	loopConnection = runService.Stepped:Connect(function()
+		SINE = SINE + 2
 		
-		-- Disable standard default animations so they don't fight our math
-		char.Animate.Disabled = true
-
-		connection = runService.Heartbeat:Connect(function()
-			SINE = SINE + 1
-			
-			-- The extracted signature procedural math from your script
-			if RootJoint then
-				RootJoint.C0 = RootJoint.C0:lerp(ROOTC0 * CF(0 - 0.04 * COS(SINE / 24), 0, 0 + 0.05 * COS(SINE / 12)) * ANGLES(RAD(0), RAD(0 - 2.5 * COS(SINE / 24)), RAD(0)), 0.1)
-			end
-			if Neck then
-				Neck.C0 = Neck.C0:lerp(NECKC0 * CF(0, 0, 0) * ANGLES(RAD(3 - 7 * COS(SINE / 12)), RAD(0), RAD(0)), 0.1)
-			end
-			if RightShoulder then
-				RightShoulder.C0 = RightShoulder.C0:lerp(CF(1.1, 0.35 + 0.1 * COS(SINE / 12), 0.2) * ANGLES(RAD(-45 - 1.5 * COS(SINE / 12)), RAD(0), RAD(-45)) * ANGLES(RAD(0), RAD(25), RAD(0)) * RIGHTSHOULDERC0, 0.1)
-			end
-			if LeftShoulder then
-				LeftShoulder.C0 = LeftShoulder.C0:lerp(CF(-1.1, 0.35 + 0.1 * COS(SINE / 12), 0.2) * ANGLES(RAD(-44 - 1.5 * COS(SINE / 12)), RAD(0), RAD(45)) * ANGLES(RAD(0), RAD(-25), RAD(0)) * LEFTSHOULDERC0, 0.1)
-			end
-			if RightHip then
-				RightHip.C0 = RightHip.C0:lerp(CF(1, -1 + 0.035 * COS(SINE / 24) - 0.05 * COS(SINE / 12), 0) * ANGLES(RAD(0), RAD(85), RAD(0)) * ANGLES(RAD(-2 - 2.5 * COS(SINE / 24)), RAD(0), RAD(0)), 0.1)
-			end
-			if LeftHip then
-				LeftHip.C0 = LeftHip.C0:lerp(CF(-1, -1 - 0.035 * COS(SINE / 24) - 0.05 * COS(SINE / 12), 0) * ANGLES(RAD(0), RAD(-85), RAD(0)) * ANGLES(RAD(-2 + 2.5 * COS(SINE / 24)), RAD(0), RAD(0)), 0.1)
-			end
-		end)
-	else
-		-- Turn OFF
-		ToggleButton.Text = "OFF"
-		ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		local fakeHum = fakeCharModel:FindFirstChildOfClass("Humanoid")
+		local velocity = (fakeCharModel.HumanoidRootPart.Velocity * Vector3.new(1, 0, 1)).Magnitude
+		local walkSpeedValue = 8 / (fakeHum.WalkSpeed / 16)
 		
-		if connection then 
-			connection:Disconnect() 
+		-- Direct calculations applied strictly to our invisible controller model
+		if velocity > 1 then
+			-- /// WALKING PROCEDURAL MATH ///
+			FakeRoot.C0 = FakeRoot.C0:lerp(ROOTC0 * CF(0, 0, -0.05) * ANGLES(RAD(5), RAD(0), RAD(-7 * COS(SINE / walkSpeedValue))), 0.2)
+			FakeRoot.C1 = FakeRoot.C1:lerp(ROOTC0 * CF(0, 0, 0.1 * COS(SINE / (walkSpeedValue/2))) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.2)
+			FakeNeck.C0 = FakeNeck.C0:lerp(NECKC0 * CF(0, 0, 0) * ANGLES(RAD(5 - 1 * SIN(SINE / (walkSpeedValue / 2))), RAD(0), RAD(7 * COS(SINE / walkSpeedValue))), 0.2)
+			FakeNeck.C1 = FakeNeck.C1:lerp(CF(0, -0.5, 0) * ANGLES(RAD(-90), RAD(0), RAD(180)), 0.2)
+			FakeRS.C0 = FakeRS.C0:lerp(CF(1.5, 0.5, 0) * ANGLES(RAD(60 * COS(SINE / walkSpeedValue)), RAD(-5), RAD(5)) * RIGHTSHOULDERC0, 0.2)
+			FakeLS.C0 = FakeLS.C0:lerp(CF(-1.5, 0.5, 0) * ANGLES(RAD(-60 * COS(SINE / walkSpeedValue)), RAD(5), RAD(-5)) * LEFTSHOULDERC0, 0.2)
+			FakeRH.C0 = FakeRH.C0:lerp(CF(1 , -1, 0) * ANGLES(RAD(0), RAD(85), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.2)
+			FakeLH.C0 = FakeLH.C0:lerp(CF(-1, -1, 0) * ANGLES(RAD(0), RAD(-85), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.2)
+			FakeRH.C1 = FakeRH.C1:lerp(CF(0.5, 0.875 - 0.125 * SIN(SINE / walkSpeedValue) - 0.15 * COS(SINE / walkSpeedValue*2), 0.25 * SIN(SINE / walkSpeedValue)) * ANGLES(RAD(0), RAD(90), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(10+50 * COS(SINE / walkSpeedValue))), 0.2)
+			FakeLH.C1 = FakeLH.C1:lerp(CF(-0.5, 0.875 + 0.125 * SIN(SINE / walkSpeedValue) - 0.15 * COS(SINE / walkSpeedValue*2), -0.25 * SIN(SINE / walkSpeedValue)) * ANGLES(RAD(0), RAD(-90), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(-10+50 * COS(SINE / walkSpeedValue))), 0.2)
+		else
+			-- /// IDLE PROCEDURAL MATH ///
+			FakeRoot.C0 = FakeRoot.C0:lerp(ROOTC0 * CF(0 - 0.04 * COS(SINE / 24), 0, 0 + 0.05 * COS(SINE / 12)) * ANGLES(RAD(0), RAD(0 - 2.5 * COS(SINE / 24)), RAD(0)), 0.1)
+			FakeRoot.C1 = FakeRoot.C1:lerp(ROOTC0 * CF(0, 0, 0) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.1)
+			FakeNeck.C0 = FakeNeck.C0:lerp(NECKC0 * CF(0, 0, 0) * ANGLES(RAD(3 - 7 * COS(SINE / 12)), RAD(0), RAD(0)), 0.1)
+			FakeNeck.C1 = FakeNeck.C1:lerp(CF(0, -0.5, 0) * ANGLES(RAD(-90), RAD(0), RAD(180)), 0.1)
+			FakeRS.C0 = FakeRS.C0:lerp(CF(1.1, 0.35 + 0.1 * COS(SINE / 12), 0.2) * ANGLES(RAD(-45 - 1.5 * COS(SINE / 12)), RAD(0), RAD(-45)) * ANGLES(RAD(0), RAD(25), RAD(0)) * RIGHTSHOULDERC0, 0.1)
+			FakeLS.C0 = FakeLS.C0:lerp(CF(-1.1, 0.35 + 0.1 * COS(SINE / 12), 0.2) * ANGLES(RAD(-44 - 1.5 * COS(SINE / 12)), RAD(0), RAD(45)) * ANGLES(RAD(0), RAD(-25), RAD(0)) * LEFTSHOULDERC0, 0.1)
+			FakeRH.C0 = FakeRH.C0:lerp(CF(1, -1 + 0.035 * COS(SINE / 24) - 0.05 * COS(SINE / 12), 0) * ANGLES(RAD(0), RAD(85), RAD(0)) * ANGLES(RAD(-2 - 2.5 * COS(SINE / 24)), RAD(0), RAD(0)), 0.1)
+			FakeLH.C0 = FakeLH.C0:lerp(CF(-1, -1 - 0.035 * COS(SINE / 24) - 0.05 * COS(SINE / 12), 0) * ANGLES(RAD(0), RAD(-85), RAD(0)) * ANGLES(RAD(-2 + 2.5 * COS(SINE / 24)), RAD(0), RAD(0)), 0.1)
+			FakeRH.C1 = FakeRH.C1:lerp(CF(0.5, 1, 0) * ANGLES(RAD(0), RAD(90), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.1)
+			FakeLH.C1 = FakeLH.C1:lerp(CF(-0.5, 1, 0) * ANGLES(RAD(0), RAD(-90), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.1)
 		end
 		
-		-- Re-enable standard animations
-		char.Animate.Disabled = false
+		-- Move your actual network character object using WASD inputs bound to the underlying logic rig
+		fakeHum:Move(char:FindFirstChildOfClass("Humanoid").MoveDirection, true)
+		if char:FindFirstChildOfClass("Humanoid").Jump then fakeHum.Jump = true end
 		
-		-- Reset all joints back to their default structural states
-		if RootJoint then RootJoint.C0 = ROOTC0 end
-		if Neck then Neck.C0 = NECKC0 end
-		if RightShoulder then RightShoulder.C0 = RIGHTSHOULDERC0 end
-		if LeftShoulder then LeftShoulder.C0 = LEFTSHOULDERC0 end
-		if RightHip then RightHip.C0 = RIGHTHIPC0 end
-		if LeftHip then LeftHip.C0 = LEFTHIPC0 end
-	end
+		-- Match real unanchored body configurations to the math model configurations
+		for _, part in pairs(char:GetChildren()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+				local targetPart = fakeCharModel:FindFirstChild(part.Name)
+				if targetPart then
+					part.CFrame = targetPart.CFrame
+				end
+			end
+		end
+		
+		-- Move the standard HumanoidRootPart out of bounds to keep your dynamic setup safe from local collisions
+		if char:FindFirstChild("HumanoidRootPart") and fakeCharModel:FindFirstChild("Torso") then
+			char.HumanoidRootPart.CFrame = CF(fakeCharModel.Torso.Position.X, -150, fakeCharModel.Torso.Position.Z)
+		end
+	end)
+	
+	-- High-velocity loop to maintain network replication override
+	physicsConnection = runService.Heartbeat:Connect(function()
+		for _, part in pairs(char:GetChildren()) do
+			if part:IsA("BasePart") then
+				-- Velocity values keep ownership from sleeping or resetting on the server environment
+				if part.Name == "HumanoidRootPart" then
+					part.Velocity = Vector3.new(30, 0, 30)
+				else
+					part.Velocity = Vector3.new(-30, 0, -30)
+				end
+			end
+		end
+	end)
 end)
