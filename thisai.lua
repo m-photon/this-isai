@@ -1,7 +1,6 @@
 -- // GUI Setup
 local player = game:GetService("Players").LocalPlayer
 local runService = game:GetService("RunService")
-local char = player.Character or player.CharacterAdded:Wait()
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FE_InspectorGUI"
@@ -58,49 +57,23 @@ local NECKC0 = CF(0, 1, 0) * ANGLES(RAD(-90), RAD(0), RAD(180))
 local RIGHTSHOULDERC0 = CF(-0.5, 0, 0) * ANGLES(RAD(0), RAD(90), RAD(0))
 local LEFTSHOULDERC0 = CF(0.5, 0, 0) * ANGLES(RAD(0), RAD(-90), RAD(0))
 
--- // Create the underlying system for FE Replication
-local function SetupReanimation()
-	char.Archivable = true
-	fakeCharModel = char:Clone()
-	fakeCharModel.Name = "FakeCharacter"
-	
-	-- Strip client-side clutter from the replication model
-	for _, v in pairs(fakeCharModel:GetChildren()) do
-		if v:IsA("LocalScript") or v:IsA("Script") or v:IsA("Accessory") then
-			v:Destroy()
-		end
-		if v:IsA("BasePart") then
-			v.Transparency = 1 -- Keep it completely invisible
-			v.CanCollide = false
-		end
-	end
-	
-	fakeCharModel.Parent = workspace
-	char.Archivable = false
-	
-	-- Local Perma-Death: sever constraints so limbs become free physics parts
-	if char:FindFirstChild("Animate") then char.Animate.Disabled = true end
-	local humanoid = char:FindFirstChildOfClass("Humanoid")
-	if humanoid then 
-		humanoid.BreakJointsOnDeath = false
-		humanoid.Health = 0 
-	end
-	char:BreakJoints()
-	
-	-- Force network settings for your real player physics control
-	settings().Physics.AllowSleep = false
-	settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalThrottle.Disabled
-	
-	-- Retarget the camera tracking onto the hidden animation rig
-	workspace.CurrentCamera.CameraSubject = fakeCharModel:FindFirstChildOfClass("Humanoid")
-end
-
 -- // Toggle Logic
 ToggleButton.MouseButton1Click:Connect(function()
-	if playing then return end -- This reanimation layout is a permanent state until respawn
+	if playing then return end 
 	
+	-- Fetch the character dynamically at the moment of the click
+	local char = player.Character
+	if not char or not char:FindFirstChild("Humanoid") then return end
+	
+	-- Visible Rig Check
 	if char.Humanoid.RigType ~= Enum.HumanoidRigType.R6 then
-		warn("FE Reanimation requires an R6 rig!")
+		ToggleButton.Text = "MUST BE R6!"
+		ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+		task.wait(2)
+		if not playing then
+			ToggleButton.Text = "OFF"
+			ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		end
 		return
 	end
 	
@@ -109,9 +82,39 @@ ToggleButton.MouseButton1Click:Connect(function()
 	ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
 	ToggleButton.AutoButtonColor = false
 	
-	-- Initialize the network-ownership reanimation state
-	SetupReanimation()
+	-- // Setup Reanimation
+	char.Archivable = true
+	fakeCharModel = char:Clone()
+	fakeCharModel.Name = "FakeCharacter"
 	
+	for _, v in pairs(fakeCharModel:GetChildren()) do
+		if v:IsA("LocalScript") or v:IsA("Script") or v:IsA("Accessory") then
+			v:Destroy()
+		end
+		if v:IsA("BasePart") then
+			v.Transparency = 1 
+			v.CanCollide = false
+		end
+	end
+	
+	-- Ensure the fake character starts exactly where you are standing
+	fakeCharModel:SetPrimaryPartCFrame(char:GetPrimaryPartCFrame())
+	fakeCharModel.Parent = workspace
+	char.Archivable = false
+	
+	if char:FindFirstChild("Animate") then char.Animate.Disabled = true end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if humanoid then 
+		humanoid.BreakJointsOnDeath = false
+		humanoid.Health = 0 
+	end
+	char:BreakJoints()
+	
+	settings().Physics.AllowSleep = false
+	settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalThrottle.Disabled
+	workspace.CurrentCamera.CameraSubject = fakeCharModel:FindFirstChildOfClass("Humanoid")
+	
+	-- // Math Setup
 	local FakeRoot = fakeCharModel.HumanoidRootPart.RootJoint
 	local FakeNeck = fakeCharModel.Torso.Neck
 	local FakeRS = fakeCharModel.Torso["Right Shoulder"]
@@ -127,9 +130,8 @@ ToggleButton.MouseButton1Click:Connect(function()
 		local velocity = (fakeCharModel.HumanoidRootPart.Velocity * Vector3.new(1, 0, 1)).Magnitude
 		local walkSpeedValue = 8 / (fakeHum.WalkSpeed / 16)
 		
-		-- Direct calculations applied strictly to our invisible controller model
 		if velocity > 1 then
-			-- /// WALKING PROCEDURAL MATH ///
+			-- /// WALKING ///
 			FakeRoot.C0 = FakeRoot.C0:lerp(ROOTC0 * CF(0, 0, -0.05) * ANGLES(RAD(5), RAD(0), RAD(-7 * COS(SINE / walkSpeedValue))), 0.2)
 			FakeRoot.C1 = FakeRoot.C1:lerp(ROOTC0 * CF(0, 0, 0.1 * COS(SINE / (walkSpeedValue/2))) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.2)
 			FakeNeck.C0 = FakeNeck.C0:lerp(NECKC0 * CF(0, 0, 0) * ANGLES(RAD(5 - 1 * SIN(SINE / (walkSpeedValue / 2))), RAD(0), RAD(7 * COS(SINE / walkSpeedValue))), 0.2)
@@ -141,7 +143,7 @@ ToggleButton.MouseButton1Click:Connect(function()
 			FakeRH.C1 = FakeRH.C1:lerp(CF(0.5, 0.875 - 0.125 * SIN(SINE / walkSpeedValue) - 0.15 * COS(SINE / walkSpeedValue*2), 0.25 * SIN(SINE / walkSpeedValue)) * ANGLES(RAD(0), RAD(90), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(10+50 * COS(SINE / walkSpeedValue))), 0.2)
 			FakeLH.C1 = FakeLH.C1:lerp(CF(-0.5, 0.875 + 0.125 * SIN(SINE / walkSpeedValue) - 0.15 * COS(SINE / walkSpeedValue*2), -0.25 * SIN(SINE / walkSpeedValue)) * ANGLES(RAD(0), RAD(-90), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(-10+50 * COS(SINE / walkSpeedValue))), 0.2)
 		else
-			-- /// IDLE PROCEDURAL MATH ///
+			-- /// IDLE ///
 			FakeRoot.C0 = FakeRoot.C0:lerp(ROOTC0 * CF(0 - 0.04 * COS(SINE / 24), 0, 0 + 0.05 * COS(SINE / 12)) * ANGLES(RAD(0), RAD(0 - 2.5 * COS(SINE / 24)), RAD(0)), 0.1)
 			FakeRoot.C1 = FakeRoot.C1:lerp(ROOTC0 * CF(0, 0, 0) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.1)
 			FakeNeck.C0 = FakeNeck.C0:lerp(NECKC0 * CF(0, 0, 0) * ANGLES(RAD(3 - 7 * COS(SINE / 12)), RAD(0), RAD(0)), 0.1)
@@ -154,11 +156,9 @@ ToggleButton.MouseButton1Click:Connect(function()
 			FakeLH.C1 = FakeLH.C1:lerp(CF(-0.5, 1, 0) * ANGLES(RAD(0), RAD(-90), RAD(0)) * ANGLES(RAD(0), RAD(0), RAD(0)), 0.1)
 		end
 		
-		-- Move your actual network character object using WASD inputs bound to the underlying logic rig
 		fakeHum:Move(char:FindFirstChildOfClass("Humanoid").MoveDirection, true)
 		if char:FindFirstChildOfClass("Humanoid").Jump then fakeHum.Jump = true end
 		
-		-- Match real unanchored body configurations to the math model configurations
 		for _, part in pairs(char:GetChildren()) do
 			if part:IsA("BasePart") then
 				part.CanCollide = false
@@ -169,17 +169,14 @@ ToggleButton.MouseButton1Click:Connect(function()
 			end
 		end
 		
-		-- Move the standard HumanoidRootPart out of bounds to keep your dynamic setup safe from local collisions
 		if char:FindFirstChild("HumanoidRootPart") and fakeCharModel:FindFirstChild("Torso") then
 			char.HumanoidRootPart.CFrame = CF(fakeCharModel.Torso.Position.X, -150, fakeCharModel.Torso.Position.Z)
 		end
 	end)
 	
-	-- High-velocity loop to maintain network replication override
 	physicsConnection = runService.Heartbeat:Connect(function()
 		for _, part in pairs(char:GetChildren()) do
 			if part:IsA("BasePart") then
-				-- Velocity values keep ownership from sleeping or resetting on the server environment
 				if part.Name == "HumanoidRootPart" then
 					part.Velocity = Vector3.new(30, 0, 30)
 				else
