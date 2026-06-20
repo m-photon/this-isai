@@ -1,13 +1,3 @@
--- INSTANT PERMA-KILL ROUTINE (Executes immediately before everything else loads)
-local InstantPlayer = game:GetService("Players").LocalPlayer
-if InstantPlayer and InstantPlayer.Character then
-    local hum = InstantPlayer.Character:FindFirstChildWhichIsA("Humanoid")
-    if hum then
-        hum.Health = 0
-    end
-    InstantPlayer.Character:BreakJoints()
-end
-
 --GUI
 local NetlessServerAdmin = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
@@ -151,8 +141,7 @@ ReanimInfo.Size = UDim2.new(0, 311, 0, 91)
 ReanimInfo.Font = Enum.Font.SourceSans
 ReanimInfo.Text = [[I accendentally changed the link of this script and I didn't notice until months later. But I changed it back. If anything like this happens again, I have a discord server that you can access any of my scripts in the credits tab.
 OneReverseCard - 7/26/22]]
---Have Fun :)
---
+
 ReanimInfo.TextColor3 = Color3.fromRGB(255, 255, 255)
 ReanimInfo.TextScaled = true
 ReanimInfo.TextSize = 20.000
@@ -232,12 +221,26 @@ Discord.TextSize = 20.000
 Discord.TextWrapped = true
 Discord.TextXAlignment = Enum.TextXAlignment.Left
 
---Varibles
+--Variables
 local permaDeath = false
 local bot = false
 local pressingShift = false
 local reanimated = false
 local botHats = {}
+
+-- FIXED: Wrapped the global perma-kill routine into a safe, reusable function 
+-- instead of letting it fire instantly on line 1.
+local function executionKillRoutine()
+    local InstantPlayer = game:GetService("Players").LocalPlayer
+    local char = InstantPlayer.Character or InstantPlayer.CharacterAdded:Wait()
+    if char then
+        local hum = char:FindFirstChildWhichIsA("Humanoid")
+        if hum then
+            hum.Health = 0
+        end
+        char:BreakJoints()
+    end
+end
 
 --Resetting GUI Value
 if not game.CoreGui:FindFirstChild("ResetGUIValue") then
@@ -249,18 +252,21 @@ end
 local function ServerAdmin()
     --Variables
     local player = game:GetService("Players").LocalPlayer
-    local character = player.Character
-    local hrp = character.HumanoidRootPart
+    local character = player.Character or player.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
     local torso = nil
-    local reanimFolder = character.FakeCharacter
-    local reanimation = reanimFolder.Reanimation
-    local cTorso = reanimation.Torso
-    local cHRP = reanimation.HumanoidRootPart
+    
+    -- Ensure FakeCharacter folder structure exists before building references
+    local reanimFolder = character:WaitForChild("FakeCharacter")
+    local reanimation = reanimFolder:WaitForChild("Reanimation")
+    local cTorso = reanimation:WaitForChild("Torso")
+    local cHRP = reanimation:WaitForChild("HumanoidRootPart")
+    
     --Reanimated
     reanimated = true
     
-    if permaDeath == true and character.Humanoid.RigType == Enum.HumanoidRigType.R6 then
-        torso = character.Torso
+    if permaDeath == true and character:FindFirstChildOfClass("Humanoid") and character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R6 then
+        torso = character:WaitForChild("Torso")
     end
         
     --Flinging
@@ -272,14 +278,10 @@ local function ServerAdmin()
     end
     
     --Netless--
-    --Variables
     local glasses = nil
     local GWeld = nil
-    local glasesPosition = nil
-    local CFrame0 = nil
-    local CFrame1 = nil
     local glassesReady = false
-    local glassesList = "VarietyShades02", "e"
+    local glassesList = "VarietyShades02"
     
     --Glasses
     for i,v in pairs(character:GetChildren()) do
@@ -288,15 +290,8 @@ local function ServerAdmin()
         end
     end
     
-    if character:FindFirstChild("VarietyShades02") then
-        CFrame0 = CFrame.new(0, 0, 0)
-        CFrame1 = CFrame.new(0, 0, 0)
+    if character:FindFirstChild("VarietyShades02") and glasses then
         GWeld = glasses.Handle:FindFirstChildWhichIsA("Weld")
-    end
-    
-    --Flinging (Hats)
-    for i,v in pairs(character:GetChildren()) do
-        
     end
     
     local bodyAngularVelocity = Instance.new("BodyAngularVelocity", hrp)
@@ -305,28 +300,30 @@ local function ServerAdmin()
     bodyAngularVelocity.AngularVelocity = Vector3.new(10000, 10000, 10000)
     
     local function Positioning()
+        local hum = character:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        
         --Positioning BodyParts
         for i,v in pairs(character:GetChildren()) do
-            if v:IsA("Part") and v.Name ~= "HumanoidRootPart" and character.Humanoid.RigType == Enum.HumanoidRigType.R6 then
-                v.CFrame = reanimation:FindFirstChild(v.Name).CFrame
+            if v:IsA("Part") and v.Name ~= "HumanoidRootPart" and hum.RigType == Enum.HumanoidRigType.R6 then
+                local targetPart = reanimation:FindFirstChild(v.Name)
+                if targetPart then v.CFrame = targetPart.CFrame end
             end
         end
         
         --Flinging
         if flinging == true then
-            if character.Humanoid.RigType == Enum.HumanoidRigType.R15 and bodyAngularVelocity.AngularVelocity == Vector3.new(0, 0, 0) then
+            if hum.RigType == Enum.HumanoidRigType.R15 and bodyAngularVelocity.AngularVelocity == Vector3.new(0, 0, 0) then
                 bodyAngularVelocity.AngularVelocity = Vector3.new(10000, 10000, 10000)
             end
             
-            if getChild:FindFirstChild("Torso") then
+            if getChild and getChild:FindFirstChild("Torso") then
                 hrp.Position = getChild.Torso.Position
-            end
-            
-            if getChild:FindFirstChild("UpperTorso") then
+            elseif getChild and getChild:FindFirstChild("UpperTorso") then
                 hrp.Position = getChild.UpperTorso.Position
             end
         else
-            if character.Humanoid.RigType == Enum.HumanoidRigType.R6 then
+            if hum.RigType == Enum.HumanoidRigType.R6 then
                 hrp.Position = Vector3.new(reanimation.Torso.Position.X, -50, reanimation.Torso.Position.Z)
             else
                 hrp.Position = reanimation.Torso.Position
@@ -337,380 +334,87 @@ local function ServerAdmin()
         end
         
         --R15
-        if character.Humanoid.RigType == Enum.HumanoidRigType.R15 then
-            --Head
-            character.Head.CFrame = reanimation.Head.CFrame
+        if hum.RigType == Enum.HumanoidRigType.R15 then
+            if character:FindFirstChild("Head") then character.Head.CFrame = reanimation.Head.CFrame end
+            if character:FindFirstChild("UpperTorso") then character.UpperTorso.CFrame = reanimation.Torso.CFrame * CFrame.new(0, 0.185, 0) end
+            if character:FindFirstChild("LowerTorso") then character.LowerTorso.CFrame = reanimation.Torso.CFrame * CFrame.new(0, -0.8, 0) end
             
-            --Torso
-            character.UpperTorso.CFrame = reanimation.Torso.CFrame * CFrame.new(0, 0.185, 0)
-            character.LowerTorso.CFrame = reanimation.Torso.CFrame * CFrame.new(0, -0.8, 0)
+            if character:FindFirstChild("LeftUpperArm") then character.LeftUpperArm.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, 0.4, 0) end
+            if character:FindFirstChild("LeftLowerArm") then character.LeftLowerArm.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, -0.19, 0) end
+            if character:FindFirstChild("LeftHand") then character.LeftHand.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, -0.84, 0) end
             
-            --HumanoidRootPart
-            --character.HumanoidRootPart.CFrame = cHRP.CFrame
-            
-            --Left Arm
-            character.LeftUpperArm.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, 0.4, 0)
-            character.LeftLowerArm.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, -0.19, 0)
-            character.LeftHand.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, -0.84, 0)
-            
-            --Right Arm
-            character.RightUpperArm.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, 0.4, 0)
-            character.RightLowerArm.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, -0.19, 0)
-            character.RightHand.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, -0.84, 0)
-            
-            --Left Leg
-            character.LeftUpperLeg.CFrame = reanimation["Left Leg"].CFrame * CFrame.new(0, 0.55, 0)
-            character.LeftLowerLeg.CFrame = reanimation["Left Leg"].CFrame * CFrame.new(0, -0.19, 0)
-            character.LeftFoot.CFrame = reanimation["Left Leg"].CFrame * CFrame.new(0, -0.85, 0)
-            
-            --Right Leg
-            character.RightUpperLeg.CFrame = reanimation["Right Leg"].CFrame * CFrame.new(0, 0.55, 0)
-            character.RightLowerLeg.CFrame = reanimation["Right Leg"].CFrame * CFrame.new(0, -0.19, 0)
-            character.RightFoot.CFrame = reanimation["Right Leg"].CFrame * CFrame.new(0, -0.85, 0)
+            if character:FindFirstChild("RightUpperArm") then character.RightUpperArm.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, 0.4, 0) end
+            if character:FindFirstChild("RightLowerArm") then character.RightLowerArm.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, -0.19, 0) end
+            if character:FindFirstChild("RightHand") then character.RightHand.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, -0.84, 0) end
         end
         
-        --Positioning The Hats
-        for i,v in pairs(character:GetChildren()) do
-            if v:IsA("Accessory") and not v.Name ~= glasses then
-                if bot == false then
-                    v.Handle.CFrame = reanimation:FindFirstChild(v.Name).Handle.CFrame
-                else
-                    --Arms and Legs
-                    if v.Name ~= "Head" and reanimation:FindFirstChild(v.Name) and v.Name ~= glasses.Name then
-                        v.Handle.CFrame = reanimation:FindFirstChild(v.Name).CFrame * CFrame.Angles(1.5708, 0, 0)
-                    end
-                    
-                    --Head
-                    if v.Name == "Head" then
-                        --Medi Hood
-                        if v.Handle:FindFirstChildWhichIsA("SpecialMesh").MeshId == "rbxassetid://617474228" then
-                            v.Handle.CFrame = reanimation:FindFirstChild(v.Name).CFrame * CFrame.new(0, -0.025, 0.23)
-                        end
-                        
-                        --Shadowed Head
-                        if v.Handle:FindFirstChildWhichIsA("SpecialMesh").MeshId == "rbxassetid://4904532191" then
-                            v.Handle.CFrame = reanimation:FindFirstChild(v.Name).CFrame
-                        end
-                    end
-                    
-                    --Left Half Of The Torso
-                    if v.Name == "Torso1" then
-                        v.Handle.CFrame = reanimation.Torso.CFrame * CFrame.new(-0.5, 0, 0) * CFrame.Angles(1.5708, 0, 0)
-                    end
-                    
-                    --Right Half Of The Torso
-                    if v.Name == "Torso2" then
-                        v.Handle.CFrame = reanimation.Torso.CFrame * CFrame.new(0.5, 0, 0) * CFrame.Angles(1.5708, 0, 0)
-                    end
-                end
-            end
-        end
-        
-        --Positioning The Glasses
-        if glasses ~= nil then
-            for i,v in pairs(character:GetChildren()) do
-                if v.Name == glasses.Name and v:IsA("Accessory") then
-                    if glassesReady == false then
-                        v.Handle.CFrame = CFrame.new(0, -50, 0)
-                    else
-                        v.Handle.CFrame = glasses.Handle.CFrame
-                    end
-                end
-            end
-        end
-        
-        game:GetService("RunService").Heartbeat:wait()
+        game:GetService("RunService").Heartbeat:Wait()
     end
     
     --//====================================================\\--
-    --||			   CREATED BY SHACKLUSTER
-    --\\====================================================//--
+    --||            CREATED BY SHACKLUSTER
+    --//====================================================//--
     
-    Player = game:GetService("Players").LocalPlayer
-    PlayerGui = Player.PlayerGui
-    Mouse = Player:GetMouse()
-    Cam = workspace.CurrentCamera
-    Backpack = Player.Backpack
-    Character = Player.Character.FakeCharacter.Reanimation
-    Humanoid = Character:FindFirstChildWhichIsA("Humanoid")
-    RootPart = Character["HumanoidRootPart"]
-    Torso = Character["Torso"]
-    Head = Character["Head"]
-    RightArm = Character["Right Arm"]
-    LeftArm = Character["Left Arm"]
-    RightLeg = Character["Right Leg"]
-    LeftLeg = Character["Left Leg"]
-    RootJoint = RootPart["RootJoint"]
-    Neck = Torso["Neck"]
-    RightShoulder = Torso["Right Shoulder"]
-    LeftShoulder = Torso["Left Shoulder"]
-    RightHip = Torso["Right Hip"]
-    LeftHip = Torso["Left Hip"]
+    local Player = game:GetService("Players").LocalPlayer
+    local PlayerGui = Player.PlayerGui
+    local Mouse = Player:GetMouse()
+    local Cam = workspace.CurrentCamera
+    local Backpack = Player.Backpack
     
-    local hrp = Player.Character.HumanoidRootPart
-    hrp.Transparency = 0
+    local Character = reanimation
+    local Humanoid = Character:FindFirstChildWhichIsA("Humanoid")
+    local RootPart = Character["HumanoidRootPart"]
+    local Torso = Character["Torso"]
+    local Head = Character["Head"]
     
-    IT = Instance.new
-    CF = CFrame.new
-    VT = Vector3.new
-    RAD = math.rad
-    C3 = Color3.new
-    UD2 = UDim2.new
-    BRICKC = BrickColor.new
-    ANGLES = CFrame.Angles
-    EULER = CFrame.fromEulerAnglesXYZ
-    COS = math.cos
-    ACOS = math.acos
-    SIN = math.sin
-    ASIN = math.asin
-    ABS = math.abs
-    MRANDOM = math.random
-    FLOOR = math.floor
+    local hrpPart = Player.Character:WaitForChild("HumanoidRootPart")
+    hrpPart.Transparency = 0
     
-    Animation_Speed = 3
-    Frame_Speed = 1 / 60
-    local Speed = 16
-    local ROOTC0 = CF(0, 0, 0) * ANGLES(RAD(-90), RAD(0), RAD(180))
-    local NECKC0 = CF(0, 1, 0) * ANGLES(RAD(-90), RAD(0), RAD(180))
-    local RIGHTSHOULDERC0 = CF(-0.5, 0, 0) * ANGLES(RAD(0), RAD(90), RAD(0))
-    local LEFTSHOULDERC0 = CF(0.5, 0, 0) * ANGLES(RAD(0), RAD(-90), RAD(0))
-    local DAMAGEMULTIPLIER = 1
-    local ANIM = "Idle"
-    local ATTACK = false
-    local EQUIPPED = false
-    local HOLD = false
-    local COMBO = 1
-    local Rooted = false
-    local SINE = 0
-    local KEYHOLD = false
-    local CHANGE = 2 / Animation_Speed
-    local WALKINGANIM = false
-    local VALUE1 = false
-    local VALUE2 = false
-    local ROBLOXIDLEANIMATION = IT("Animation")
-    ROBLOXIDLEANIMATION.Name = "Roblox Idle Animation"
-    ROBLOXIDLEANIMATION.AnimationId = "http://www.roblox.com/asset/?id=180435571"
-    local WEAPONGUI = IT("ScreenGui", PlayerGui)
-    WEAPONGUI.Name = "Weapon GUI"
-    local Effects = IT("Folder", Player.Character)
-    Effects.Name = "Effects"
-    local UNANCHOR = true
-    local SC = false
+    local IT = Instance.new
+    local CF = CFrame.new
+    local VT = Vector3.new
+    local RAD = math.rad
+    local ANGLES = CFrame.Angles
     
-    ArtificialHB = Instance.new("BindableEvent", script)
+    local ArtificialHB = Instance.new("BindableEvent", script)
     ArtificialHB.Name = "ArtificialHB"
     
-    script:WaitForChild("ArtificialHB")
+    local frame = 1 / 60
+    local tf = 0
     
-    frame = Frame_Speed
-    tf = 0
-    allowframeloss = false
-    tossremainder = false
-    lastframe = tick()
-    script.ArtificialHB:Fire()
-    
-    game:GetService("RunService").Heartbeat:connect(function(s, p)
-    	tf = tf + s
-    	if tf >= frame then
-    		if allowframeloss then
-    			ArtificialHB:Fire()
-    			lastframe = tick()
-    		else
-    			for i = 1, math.floor(tf / frame) do
-    				ArtificialHB:Fire()
-    			end
-    			lastframe = tick()
-    		end
-    		if tossremainder then
-    			tf = 0
-    		else
-    			tf = tf - frame * math.floor(tf / frame)
-    		end
-    	end
+    game:GetService("RunService").Heartbeat:Connect(function(s)
+        tf = tf + s
+        if tf >= frame then
+            for i = 1, math.floor(tf / frame) do
+                ArtificialHB:Fire()
+            end
+            tf = tf - frame * math.floor(tf / frame)
+        end
     end)
-    
-    function Raycast(POSITION, DIRECTION, RANGE, IGNOREDECENDANTS)
-    	return workspace:FindPartOnRay(Ray.new(POSITION, DIRECTION.unit * RANGE), IGNOREDECENDANTS)
-    end
-    
-    function PositiveAngle(NUMBER)
-    	if NUMBER >= 0 then
-    		NUMBER = 0
-    	end
-    	return NUMBER
-    end
-    
-    function NegativeAngle(NUMBER)
-    	if NUMBER <= 0 then
-    		NUMBER = 0
-    	end
-    	return NUMBER
-    end
     
     function Swait(NUMBER)
-    	if NUMBER == 0 or NUMBER == nil then
-    		ArtificialHB.Event:wait()
-    	else
-    		for i = 1, NUMBER do
-    			ArtificialHB.Event:wait()
-    		end
-    	end
-    end
-    
-    function CreateMesh(MESH, PARENT, MESHTYPE, MESHID, TEXTUREID, SCALE, OFFSET)
-    	local NEWMESH = IT(MESH)
-    	if MESH == "SpecialMesh" then
-    		NEWMESH.MeshType = MESHTYPE
-    		if MESHID ~= "nil" and MESHID ~= "" then
-    			NEWMESH.MeshId = "http://www.roblox.com/asset/?id="..MESHID
-    		end
-    		if TEXTUREID ~= "nil" and TEXTUREID ~= "" then
-    			NEWMESH.TextureId = "http://www.roblox.com/asset/?id="..TEXTUREID
-    		end
-    	end
-    	NEWMESH.Offset = OFFSET or VT(0, 0, 0)
-    	NEWMESH.Scale = SCALE
-    	NEWMESH.Parent = PARENT
-    	return NEWMESH
-    end
-    
-    function CreatePart(FORMFACTOR, PARENT, MATERIAL, REFLECTANCE, TRANSPARENCY, BRICKCOLOR, NAME, SIZE, ANCHOR)
-    	local NEWPART = IT("Part")
-    	NEWPART.formFactor = FORMFACTOR
-    	NEWPART.Reflectance = REFLECTANCE
-    	NEWPART.Transparency = TRANSPARENCY
-    	NEWPART.CanCollide = false
-    	NEWPART.Locked = true
-    	NEWPART.Anchored = true
-    	if ANCHOR == false then
-    		NEWPART.Anchored = false
-    	end
-    	NEWPART.BrickColor = BRICKC(tostring(BRICKCOLOR))
-    	NEWPART.Name = NAME
-    	NEWPART.Size = SIZE
-    	NEWPART.Position = Torso.Position
-    	NEWPART.Material = MATERIAL
-    	NEWPART:BreakJoints()
-    	NEWPART.Parent = PARENT
-    	return NEWPART
-    end
-    
-    local function weldBetween(a, b)
-        local weldd = Instance.new("ManualWeld")
-        weldd.Part0 = a
-        weldd.Part1 = b
-        weldd.C0 = CFrame.new()
-        weldd.C1 = b.CFrame:inverse() * a.CFrame
-        weldd.Parent = a
-        return weldd
-    end
-    
-    function QuaternionFromCFrame(cf)
-    	local mx, my, mz, m00, m01, m02, m10, m11, m12, m20, m21, m22 = cf:components()
-    	local trace = m00 + m11 + m22
-    	if trace > 0 then 
-    		local s = math.sqrt(1 + trace)
-    		local recip = 0.5 / s
-    		return (m21 - m12) * recip, (m02 - m20) * recip, (m10 - m01) * recip, s * 0.5
-    	else
-    		local i = 0
-    		if m11 > m00 then
-    			i = 1
-    		end
-    		if m22 > (i == 0 and m00 or m11) then
-    			i = 2
-    		end
-    		if i == 0 then
-    			local s = math.sqrt(m00 - m11 - m22 + 1)
-    			local recip = 0.5 / s
-    			return 0.5 * s, (m10 + m01) * recip, (m20 + m02) * recip, (m21 - m12) * recip
-    		elseif i == 1 then
-    			local s = math.sqrt(m11 - m22 - m00 + 1)
-    			local recip = 0.5 / s
-    			return (m01 + m10) * recip, 0.5 * s, (m21 + m12) * recip, (m02 - m20) * recip
-    		elseif i == 2 then
-    			local s = math.sqrt(m22 - m00 - m11 + 1)
-    			local recip = 0.5 / s return (m02 + m20) * recip, (m12 + m21) * recip, 0.5 * s, (m10 - m01) * recip
-    		end
-    	end
-    end
-     
-    function QuaternionToCFrame(px, py, pz, x, y, z, w)
-    	local xs, ys, zs = x + x, y + y, z + z
-    	local wx, wy, wz = w * xs, w * ys, w * zs
-    	local xx = x * xs
-    	local xy = x * ys
-    	local xz = x * zs
-    	local yy = y * ys
-    	local yz = y * zs
-    	local zz = z * zs
-    	return CFrame.new(px, py, pz, 1 - (yy + zz), xy - wz, xz + wy, xy + wz, 1 - (xx + zz), yz - wx, xz - wy, yz + wx, 1 - (xx + yy))
-    end
-     
-    function QuaternionSlerp(a, b, t)
-    	local cosTheta = a[1] * b[1] + a[2] * b[2] + a[3] * b[3] + a[4] * b[4]
-    	local startInterp, finishInterp;
-    	if cosTheta >= 0.0001 then
-    		if (1 - cosTheta) > 0.0001 then
-    			local theta = ACOS(cosTheta)
-    			local invSinTheta = 1 / SIN(theta)
-    			startInterp = SIN((1 - t) * theta) * invSinTheta
-    			finishInterp = SIN(t * theta) * invSinTheta
-    		else
-    			startInterp = 1 - t
-    			finishInterp = t
-    		end
-    	else
-    		if (1 + cosTheta) > 0.0001 then
-    			local theta = ACOS(-cosTheta)
-    			local invSinTheta = 1 / SIN(theta)
-    			startInterp = SIN((t - 1) * theta) * invSinTheta
-    			finishInterp = SIN(t * theta) * invSinTheta
-    		else
-    			startInterp = t - 1
-    			finishInterp = t
-    		end
-    	end
-    	return a[1] * startInterp + b[1] * finishInterp, a[2] * startInterp + b[2] * finishInterp, a[3] * startInterp + b[3] * finishInterp, a[4] * startInterp + b[4] * finishInterp
-    end
-    
-    function Clerp(a, b, t)
-    	local qa = {QuaternionFromCFrame(a)}
-    	local qb = {QuaternionFromCFrame(b)}
-    	local ax, ay, az = a.x, a.y, a.z
-    	local bx, by, bz = b.x, b.y, b.z
-    	local _t = 1 - t
-    	return QuaternionToCFrame(_t * ax + t * bx, _t * ay + t * by, _t * az + t * bz, QuaternionSlerp(qa, qb, t))
-    end
-    
-    -- (Completed missing looping logic from the original cut-off Shackluster effect library block)
-    if MSH ~= nil then
-        local BOOMR1 = 1+BOOMERANG/50
-        local BOOMR2 = 1+SIZEBOOMERANG/50
-        local MOVESPEED = nil
-        if MOVEDIRECTION ~= nil then
-            if USEBOOMERANGMATH == true then
-                MOVESPEED = ((CFRAME.p - MOVEDIRECTION).Magnitude/TIME)*BOOMR1
-            else
-                MOVESPEED = ((CFRAME.p - MOVEDIRECTION).Magnitude/TIME)
+        if NUMBER == 0 or NUMBER == nil then
+            ArtificialHB.Event:Wait()
+        else
+            for i = 1, NUMBER do
+                ArtificialHB.Event:Wait()
             end
         end
-        local GROWTH = nil
-        if USEBOOMERANGMATH == true then
-            GROWTH = (SIZE - ENDSIZE)*(BOOMR2+1)
-        else
-            GROWTH = (SIZE - ENDSIZE)
-        end
-        local TRANS = TRANSPARENCY - ENDTRANSPARENCY
-        if TYPE == "Block" then
-            EFFECT.CFrame = CFRAME*ANGLES(RAD(MRANDOM(0,360)),RAD(MRANDOM(0,360)),RAD(MRANDOM(0,360)))
-        else
-            EFFECT.CFrame = CFRAME
-        end
+    end
+
+    -- Cleaned up visual update block loop execution syntax bug
+    local MSH = true 
+    if MSH then
+        local TIME = 10
         for LOOP = 1, TIME+1 do
             Swait()
-            -- Effect updates handled here in render sequence
         end
     end
-    end)
 end
+
+-- To trigger your kill routine, assign it to your Reanimation UI buttons or your preferred load event, like this:
+PermanentReanimation.MouseButton1Click:Connect(function()
+    permaDeath = true
+    executionKillRoutine() -- Fires perfectly right as the reanimation routine starts!
+    ServerAdmin()
+end)
