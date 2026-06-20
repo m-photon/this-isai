@@ -1,189 +1,99 @@
--- FIXED KILL ROUTINE: Waits for the reanimation framework to build 
--- the FakeCharacter model BEFORE killing you, preventing the infinite yield loop.
-local function executionKillRoutine()
-    local InstantPlayer = game:GetService("Players").LocalPlayer
-    local char = InstantPlayer.Character or InstantPlayer.CharacterAdded:Wait()
-    if char then
-        -- Wait a maximum of 5 seconds for the reanimation script to create FakeCharacter
-        local fakeChar = char:WaitForChild("FakeCharacter", 5) 
-        
-        local hum = char:FindFirstChildWhichIsA("Humanoid")
-        if hum then
-            hum.Health = 0
-        end
-        char:BreakJoints()
-    end
+local Player = game:GetService("Players").LocalPlayer
+local Mouse = Player:GetMouse()
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+-- Prevent duplicate GUIs from spawning
+if CoreGui:FindFirstChild("SimpleFlingGui") then
+    CoreGui.SimpleFlingGui:Destroy()
 end
 
---Server Admin
-local function ServerAdmin()
-    --Variables
-    local player = game:GetService("Players").LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local hrp = character:WaitForChild("HumanoidRootPart")
-    local torso = nil
-    
-    -- Ensure FakeCharacter folder structure exists before building references
-    local reanimFolder = character:WaitForChild("FakeCharacter", 5)
-    if not reanimFolder then 
-        warn("FakeCharacter failed to load in time!")
-        return 
-    end
-    
-    local reanimation = reanimFolder:WaitForChild("Reanimation")
-    local cTorso = reanimation:WaitForChild("Torso")
-    local cHRP = reanimation:WaitForChild("HumanoidRootPart")
-    
-    --Reanimated
-    reanimated = true
-    
-    if permaDeath == true and character:FindFirstChildOfClass("Humanoid") and character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R6 then
-        torso = character:WaitForChild("Torso")
-    end
+-- Create the GUI
+local SimpleFlingGui = Instance.new("ScreenGui")
+SimpleFlingGui.Name = "SimpleFlingGui"
+SimpleFlingGui.Parent = CoreGui
+SimpleFlingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = SimpleFlingGui
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.BackgroundColor3 = Color3.fromRGB(103, 103, 103)
+MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 0)
+MainFrame.BorderSizePixel = 3
+MainFrame.Position = UDim2.new(0.5, -100, 0.85, 0)
+MainFrame.Size = UDim2.new(0, 200, 0, 40)
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1.000
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.Font = Enum.Font.Code
+Title.Text = "Hover + V to Fling"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16.000
+Title.TextWrapped = true
+
+-- Fling Logic
+local flinging = false
+
+Mouse.KeyDown:Connect(function(key)
+    if key:lower() == "v" and not flinging then
+        local target = Mouse.Target
         
-    --Flinging
-    local flinging = false
-    local getChild = nil
-    
-    local function GetCHILD(CHILD)
-        getChild = CHILD
-    end
-    
-    --Netless--
-    local glasses = nil
-    local GWeld = nil
-    local glassesReady = false
-    local glassesList = "VarietyShades02"
-    
-    --Glasses
-    for i,v in pairs(character:GetChildren()) do
-        if v.Name == glassesList then
-            glasses = reanimation:FindFirstChild(v.Name)
-        end
-    end
-    
-    if character:FindFirstChild("VarietyShades02") and glasses then
-        GWeld = glasses.Handle:FindFirstChildWhichIsA("Weld")
-    end
-    
-    local bodyAngularVelocity = Instance.new("BodyAngularVelocity", hrp)
-    bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    bodyAngularVelocity.P = 1000000000000000000000000000
-    bodyAngularVelocity.AngularVelocity = Vector3.new(10000, 10000, 10000)
-    
-    local function Positioning()
-        local hum = character:FindFirstChildOfClass("Humanoid")
-        if not hum then return end
-        
-        --Positioning BodyParts
-        for i,v in pairs(character:GetChildren()) do
-            if v:IsA("Part") and v.Name ~= "HumanoidRootPart" and hum.RigType == Enum.HumanoidRigType.R6 then
-                local targetPart = reanimation:FindFirstChild(v.Name)
-                if targetPart then v.CFrame = targetPart.CFrame end
-            end
-        end
-        
-        --Flinging
-        if flinging == true then
-            if hum.RigType == Enum.HumanoidRigType.R15 and bodyAngularVelocity.AngularVelocity == Vector3.new(0, 0, 0) then
-                bodyAngularVelocity.AngularVelocity = Vector3.new(10000, 10000, 10000)
-            end
+        -- Check if we are hovering over a valid player/character
+        if target and target.Parent and target.Parent:FindFirstChildWhichIsA("Humanoid") then
+            local targetChar = target.Parent
+            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart") or targetChar:FindFirstChild("Torso") or targetChar:FindFirstChild("UpperTorso")
+            local myChar = Player.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
             
-            if getChild and getChild:FindFirstChild("Torso") then
-                hrp.Position = getChild.Torso.Position
-            elseif getChild and getChild:FindFirstChild("UpperTorso") then
-                hrp.Position = getChild.UpperTorso.Position
-            end
-        else
-            if hum.RigType == Enum.HumanoidRigType.R6 then
-                hrp.Position = Vector3.new(reanimation.Torso.Position.X, -50, reanimation.Torso.Position.Z)
-            else
-                hrp.Position = reanimation.Torso.Position
-                if bodyAngularVelocity.AngularVelocity == Vector3.new(10000, 10000, 10000) then
-                    bodyAngularVelocity.AngularVelocity = Vector3.new(0, 0, 0)
+            if targetRoot and myRoot then
+                flinging = true
+                Title.Text = "Flinging: " .. targetChar.Name
+                Title.TextColor3 = Color3.fromRGB(255, 0, 0)
+                
+                -- Save original position to teleport back after the fling
+                local originalCFrame = myRoot.CFrame
+                
+                -- Apply the spinning force (Using the exact math from your original script)
+                local bav = Instance.new("BodyAngularVelocity")
+                bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                bav.P = 1000000000000000000000000000
+                bav.AngularVelocity = Vector3.new(10000, 10000, 10000)
+                bav.Parent = myRoot
+                
+                -- Put character in jumping state to avoid floor friction stopping the fling
+                if myChar:FindFirstChildWhichIsA("Humanoid") then
+                    myChar:FindFirstChildWhichIsA("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
                 end
-            end
-        end
-        
-        --R15
-        if hum.RigType == Enum.HumanoidRigType.R15 then
-            if character:FindFirstChild("Head") then character.Head.CFrame = reanimation.Head.CFrame end
-            if character:FindFirstChild("UpperTorso") then character.UpperTorso.CFrame = reanimation.Torso.CFrame * CFrame.new(0, 0.185, 0) end
-            if character:FindFirstChild("LowerTorso") then character.LowerTorso.CFrame = reanimation.Torso.CFrame * CFrame.new(0, -0.8, 0) end
-            
-            if character:FindFirstChild("LeftUpperArm") then character.LeftUpperArm.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, 0.4, 0) end
-            if character:FindFirstChild("LeftLowerArm") then character.LeftLowerArm.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, -0.19, 0) end
-            if character:FindFirstChild("LeftHand") then character.LeftHand.CFrame = reanimation["Left Arm"].CFrame * CFrame.new(0, -0.84, 0) end
-            
-            if character:FindFirstChild("RightUpperArm") then character.RightUpperArm.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, 0.4, 0) end
-            if character:FindFirstChild("RightLowerArm") then character.RightLowerArm.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, -0.19, 0) end
-            if character:FindFirstChild("RightHand") then character.RightHand.CFrame = reanimation["Right Arm"].CFrame * CFrame.new(0, -0.84, 0) end
-        end
-        
-        game:GetService("RunService").Heartbeat:Wait()
-    end
-    
-    local Player = game:GetService("Players").LocalPlayer
-    local PlayerGui = Player.PlayerGui
-    local Mouse = Player:GetMouse()
-    local Cam = workspace.CurrentCamera
-    local Backpack = Player.Backpack
-    
-    local Character = reanimation
-    local Humanoid = Character:FindFirstChildWhichIsA("Humanoid")
-    local RootPart = Character["HumanoidRootPart"]
-    local Torso = Character["Torso"]
-    local Head = Character["Head"]
-    
-    local hrpPart = Player.Character:WaitForChild("HumanoidRootPart")
-    hrpPart.Transparency = 0
-    
-    local IT = Instance.new
-    local CF = CFrame.new
-    local VT = Vector3.new
-    local RAD = math.rad
-    local ANGLES = CFrame.Angles
-    
-    local ArtificialHB = Instance.new("BindableEvent", script)
-    ArtificialHB.Name = "ArtificialHB"
-    
-    local frame = 1 / 60
-    local tf = 0
-    
-    game:GetService("RunService").Heartbeat:Connect(function(s)
-        tf = tf + s
-        if tf >= frame then
-            for i = 1, math.floor(tf / frame) do
-                ArtificialHB:Fire()
-            end
-            tf = tf - frame * math.floor(tf / frame)
-        end
-    end)
-    
-    function Swait(NUMBER)
-        if NUMBER == 0 or NUMBER == nil then
-            ArtificialHB.Event:Wait()
-        else
-            for i = 1, NUMBER do
-                ArtificialHB.Event:Wait()
+                
+                local startTime = tick()
+                local connection
+                
+                -- Heartbeat loop to stick to the target
+                connection = RunService.Heartbeat:Connect(function()
+                    -- Stop flinging after 1.5 seconds or if target leaves/dies
+                    if tick() - startTime >= 1.5 or not targetRoot.Parent then
+                        connection:Disconnect()
+                        if bav then bav:Destroy() end
+                        
+                        -- Reset physics and position
+                        myRoot.Velocity = Vector3.new(0, 0, 0)
+                        myRoot.RotVelocity = Vector3.new(0, 0, 0)
+                        myRoot.CFrame = originalCFrame
+                        
+                        flinging = false
+                        Title.Text = "Hover + V to Fling"
+                        Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    else
+                        -- Teleport inside the target continuously to apply physics damage
+                        myRoot.CFrame = targetRoot.CFrame
+                    end
+                end)
             end
         end
     end
-
-    local MSH = true 
-    if MSH then
-        local TIME = 10
-        for LOOP = 1, TIME+1 do
-            Swait()
-        end
-    end
-end
-
--- Button Trigger Setup
-PermanentReanimation.MouseButton1Click:Connect(function()
-    permaDeath = true
-    -- We run ServerAdmin first to kick off the initialization checks, 
-    -- then process the execution kill routine smoothly.
-    task.spawn(ServerAdmin)
-    task.spawn(executionKillRoutine)
 end)
