@@ -57,7 +57,7 @@ listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = contentFrame
 
 local visorButton = Instance.new("TextButton")
-visorButton.Name = "VisorButton"
+visorButton.Name = "UN fling(might bug)"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
 visorButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 visorButton.BorderSizePixel = 0
