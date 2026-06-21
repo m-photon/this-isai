@@ -64,7 +64,7 @@ titleText.TextYAlignment = Enum.TextYAlignment.Center
 titleText.LineHeight = 1.1
 titleText.Parent = dragBar
 
--- 5. Main Content Area (For menu buttons)
+-- 5. Main Content Area
 local contentFrame = Instance.new("Frame")
 contentFrame.Name = "Content"
 contentFrame.Size = UDim2.new(1, -20, 1, -65)
@@ -72,7 +72,6 @@ contentFrame.Position = UDim2.new(0, 10, 0, 60)
 contentFrame.BackgroundTransparency = 1
 contentFrame.Parent = mainFrame
 
--- UI List Layout to automatically arrange future buttons neatly
 local listLayout = Instance.new("UIListLayout")
 listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -93,11 +92,11 @@ local buttonCorner = Instance.new("UICorner")
 buttonCorner.CornerRadius = UDim.new(0, 6)
 buttonCorner.Parent = visorButton
 
--- 7. Bottom-Left Mini Menu (Hidden by Default)
+-- 7. Bottom-Left Mini Menu
 local visorMenu = Instance.new("Frame")
 visorMenu.Name = "VisorMenu"
 visorMenu.Size = UDim2.new(0, 140, 0, 35)
-visorMenu.Position = UDim2.new(0, 25, 1, -60) -- Perfect fit for bottom left
+visorMenu.Position = UDim2.new(0, 25, 1, -60)
 visorMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 visorMenu.BorderSizePixel = 0
 visorMenu.Visible = false
@@ -112,25 +111,23 @@ visorText.Name = "VisorText"
 visorText.Size = UDim2.new(1, 0, 1, 0)
 visorText.BackgroundTransparency = 1
 visorText.Text = "V=kill neaby"
-visorText.TextColor3 = Color3.fromRGB(255, 75, 75) -- Soft red highlight
+visorText.TextColor3 = Color3.fromRGB(255, 75, 75)
 visorText.Font = Enum.Font.GothamBold
 visorText.TextSize = 14
 visorText.Parent = visorMenu
 
 
 ----------------------------------------------------------------
--- VISOR MENU TOGGLE & FLING SYSTEM (Extracted From Your Code)
+-- VISOR DETACHED REMOTE FLING SYSTEM
 ----------------------------------------------------------------
 
 local visorActive = false
 local flinging = false
 
--- Toggle bottom left menu display when clicking Visor button
 visorButton.MouseButton1Click:Connect(function()
 	visorActive = not visorActive
 	visorMenu.Visible = visorActive
 	
-	-- Tiny visual indicator change on main menu button
 	if visorActive then
 		visorButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
 	else
@@ -138,14 +135,14 @@ visorButton.MouseButton1Click:Connect(function()
 	end
 end)
 
--- The optimized standalone Fling script utilizing your exact settings
 local function flingNearestPlayer()
 	if flinging then return end
 	
 	local localPlayer = Players.LocalPlayer
 	local char = localPlayer.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
+	if not hrp or not humanoid then return end
 	
 	-- Find Nearest Target
 	local targetCharacter = nil
@@ -164,7 +161,6 @@ local function flingNearestPlayer()
 		end
 	end
 	
-	-- Stop if no players are nearby
 	if not targetCharacter then return end
 	
 	local targetPart = targetCharacter:FindFirstChild("Torso") or targetCharacter:FindFirstChild("UpperTorso") or targetCharacter:FindFirstChild("HumanoidRootPart")
@@ -172,7 +168,33 @@ local function flingNearestPlayer()
 	
 	flinging = true
 	
-	-- Setup the massive BodyAngularVelocity spin force from your script
+	-- 1. Save original position to return to later
+	local savedCFrame = hrp.CFrame
+	
+	-- 2. Find and track your RootJoint motor (Handles R6 & R15 compatibility)
+	local rootJoint = hrp:FindFirstChild("RootJoint")
+	if not rootJoint and char:FindFirstChild("LowerTorso") then
+		rootJoint = char.LowerTorso:FindFirstChild("Root")
+	end
+	
+	-- 3. Freeze your visible body parts locally so you stand perfectly still
+	local oldCollisions = {}
+	local anchoredParts = {}
+	for _, part in pairs(char:GetChildren()) do
+		if part:IsA("BasePart") then
+			oldCollisions[part] = part.CanCollide
+			part.CanCollide = false
+			if part ~= hrp then
+				anchoredParts[part] = part.Anchored
+				part.Anchored = true -- Locks legs/torso/head in place
+			end
+		end
+	end
+	
+	-- 4. Detach the HumanoidRootPart completely from the body structure
+	if rootJoint then rootJoint.Enabled = false end
+	
+	-- 5. Inject your script's hyper-spin velocity configurations
 	local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
 	bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 	bodyAngularVelocity.P = 1000000000000000000000000000
@@ -180,42 +202,43 @@ local function flingNearestPlayer()
 	bodyAngularVelocity.Parent = hrp
 	
 	local startTime = tick()
-	local flingDuration = 1.5 -- Run fling tracking loop for 1.5 seconds
+	local flingDuration = 1.5 -- Fling tracking loop length
 	
-	-- Temporarily disable character parts collisions so you pass straight through them cleanly
-	local oldCollisions = {}
-	for _, part in pairs(char:GetChildren()) do
-		if part:IsA("BasePart") then
-			oldCollisions[part] = part.CanCollide
-			part.CanCollide = false
-		end
-	end
-	
-	-- Aggressive fast physics update tracking loop
 	local connection
 	connection = RunService.Heartbeat:Connect(function()
+		-- Cleanup condition if timer finishes or target leaves
 		if tick() - startTime > flingDuration or not targetPart or not targetPart.Parent or not char or not hrp then
-			-- Cleanup forces & restore player collision settings
+			
+			-- Remove forces
 			bodyAngularVelocity:Destroy()
-			for part, canCollide in pairs(oldCollisions) do
-				if part and part.Parent then
-					part.CanCollide = canCollide
-				end
+			
+			-- Teleport the RootPart back home and re-weld it to your frozen body
+			hrp.CFrame = savedCFrame
+			hrp.Velocity = Vector3.new(0, 0, 0)
+			if rootJoint then rootJoint.Enabled = true end
+			
+			-- Unanchor your body parts and restore physics seamlessly
+			for part, wasAnchored in pairs(anchoredParts) do
+				if part and part.Parent then part.Anchored = wasAnchored end
 			end
+			for part, canCollide in pairs(oldCollisions) do
+				if part and part.Parent then part.CanCollide = canCollide end
+			end
+			
 			connection:Disconnect()
 			flinging = false
 			return
 		end
 		
-		-- Warp onto target and apply velocity vector changes to bypass network collision ownership rules
-		hrp.CFrame = CFrame.new(targetPart.Position + Vector3.new(0, 0.2, 0))
-		hrp.Velocity = Vector3.new(65, 65, 65)
+		-- Aggressively loop the detached RootPart to the target's exact vector space
+		hrp.CFrame = CFrame.new(targetPart.Position + Vector3.new(0, 0.1, 0))
+		hrp.Velocity = Vector3.new(70, 70, 70) -- Glitches game physics engine to register impact instantly
 	end)
 end
 
--- Key listener for V key bind
+-- Key bind listener
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end -- Don't fire if player is typing in chat box
+	if gameProcessed then return end
 	if visorActive and input.KeyCode == Enum.KeyCode.V then
 		flingNearestPlayer()
 	end
