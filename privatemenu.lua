@@ -218,11 +218,11 @@ end
 local function getClosestToCursor()
 	local closestDist = math.huge
 	local closestPlr = nil
-	local mousePos = uis:GetMouseLocation()
+	local mousePos = Vector2.new(mouse.X, mouse.Y)
 	
 	for _, p in pairs(plrs:GetPlayers()) do
 		if p ~= lp and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
-			local vector, onScreen = cam:WorldToViewportPoint(p.Character.Head.Position)
+			local vector, onScreen = cam:WorldToScreenPoint(p.Character.Head.Position)
 			if onScreen then
 				local dist = (Vector2.new(vector.X, vector.Y) - mousePos).Magnitude
 				if dist < closestDist then
@@ -287,7 +287,7 @@ local function updateTracers()
 			
 			local line = tracers[p]
 			if state.t and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
-				local vector, onScreen = cam:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+				local vector, onScreen = cam:WorldToScreenPoint(p.Character.HumanoidRootPart.Position)
 				if onScreen then
 					line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
 					line.To = Vector2.new(vector.X, vector.Y)
@@ -350,48 +350,42 @@ local function ghostFling()
 	
 	state.fling = true
 	vStatus.Visible = true
-	local sc = hrp.CFrame
-	local oct, occ = cam.CameraType, cam.CFrame
-	cam.CameraType = Enum.CameraType.Scriptable
-	cam.CFrame = occ
+	local oldCFrame = hrp.CFrame
 	
-	local sb = Instance.new("SelectionBox")
-	sb.Color3 = Color3.fromRGB(255, 0, 0)
-	sb.LineThickness = 0.05
-	sb.Adornee = tgt
-	sb.Parent = tgt
+	local bav = Instance.new("BodyAngularVelocity")
+	bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	bav.AngularVelocity = Vector3.new(0, 999999, 0)
+	bav.Parent = hrp
 	
+	local bv = Instance.new("BodyVelocity")
+	bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	bv.Velocity = Vector3.new(99999, 99999, 99999)
+	bv.Parent = hrp
+
 	local start = tick()
-	
-	local conn; conn = rs.Heartbeat:Connect(function()
-		if tick() - start > 1.2 or not tp or not tp.Parent or not char or not hrp or not hum then
+	local conn
+	conn = rs.Heartbeat:Connect(function()
+		if tick() - start > 1.5 or not tp or not tp.Parent or not char or not hrp or not hum then
 			conn:Disconnect()
-			if sb then sb:Destroy() end
-			hrp.AssemblyLinearVelocity, hrp.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
-			hrp.CFrame = sc
+			bav:Destroy()
+			bv:Destroy()
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.AssemblyAngularVelocity = Vector3.zero
+			hrp.CFrame = oldCFrame
 			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-			cam.CameraType = oct
 			state.fling = false
 			vStatus.Visible = false
 			return
 		end
 		
-		-- Loop through character parts to disable collisions completely
+		hum:ChangeState(Enum.HumanoidStateType.Physics)
 		for _, part in pairs(char:GetChildren()) do
 			if part:IsA("BasePart") then
 				part.CanCollide = false
 			end
 		end
 		
-		-- Force physics state so humanoids cannot stabilize velocity values
-		hum:ChangeState(Enum.HumanoidStateType.Physics)
-		
-		-- Maximum angular spin + massive structural velocity transfer
-		hrp.AssemblyAngularVelocity = Vector3.new(0, 999999, 0)
-		hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-		
-		-- Ram directly through target volume continuously
-		hrp.CFrame = tp.CFrame * CFrame.Angles(math.rad(math.random(0,360)), math.rad(math.random(0,360)), math.rad(math.random(0,360)))
+		hrp.CFrame = tp.CFrame * CFrame.new(math.random(-1,1)*0.05, math.random(-1,1)*0.05, math.random(-1,1)*0.05)
 	end)
 end
 
@@ -409,31 +403,44 @@ iBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
---- SILENT AIM HOOKS ---
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-	local method = getnamecallmethod()
-	local args = {...}
-	
-	if state.c and not checkcaller() and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay" or method == "Raycast") then
+--- SILENT AIM FUNCTION HOOKS ---
+local oldRaycast
+oldRaycast = hookfunction(workspace.Raycast, newcclosure(function(self, origin, direction, params)
+	if state.c and not checkcaller() then
 		local closest = getClosestToCursor()
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-			local origin = method == "Raycast" and args[1] or args[1].Origin
 			local targetPos = closest.Character.Head.Position
-			local direction = (targetPos - origin).Unit * 1000
-			
-			if method == "Raycast" then
-				args[2] = direction
-			else
-				args[1] = Ray.new(origin, direction)
-			end
-			
-			setnamecallmethod(method)
-			return oldNamecall(self, unpack(args))
+			local newDirection = (targetPos - origin).Unit * direction.Magnitude
+			return oldRaycast(self, origin, newDirection, params)
 		end
 	end
-	
-	return oldNamecall(self, ...)
+	return oldRaycast(self, origin, direction, params)
+end))
+
+local oldFindPartOnRay
+oldFindPartOnRay = hookfunction(workspace.FindPartOnRay, newcclosure(function(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
+	if state.c and not checkcaller() then
+		local closest = getClosestToCursor()
+		if closest ImageLabel and closest.Character and closest.Character:FindFirstChild("Head") then
+			local targetPos = closest.Character.Head.Position
+			local newRay = Ray.new(ray.Origin, (targetPos - ray.Origin).Unit * ray.Direction.Magnitude)
+			return oldFindPartOnRay(self, newRay, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
+		end
+	end
+	return oldFindPartOnRay(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
+end))
+
+local oldFindPartOnRayWithIgnoreList
+oldFindPartOnRayWithIgnoreList = hookfunction(workspace.FindPartOnRayWithIgnoreList, newcclosure(function(self, ray, ignoreList, terrainCellsAreCubes, fractionMultiplier)
+	if state.c and not checkcaller() then
+		local closest = getClosestToCursor()
+		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+			local targetPos = closest.Character.Head.Position
+			local newRay = Ray.new(ray.Origin, (targetPos - ray.Origin).Unit * ray.Direction.Magnitude)
+			return oldFindPartOnRayWithIgnoreList(self, newRay, ignoreList, terrainCellsAreCubes, fractionMultiplier)
+		end
+	end
+	return oldFindPartOnRayWithIgnoreList(self, ray, ignoreList, terrainCellsAreCubes, fractionMultiplier)
 end))
 
 local oldIndex
@@ -464,20 +471,22 @@ uis.InputBegan:Connect(function(k, p)
 	end
 end)
 
---- SMOOTH GUI DRAG LOGIC ---
-local dragging, dragStart, startPos
+--- ABSOLUTE MOUSE DRAG ENGINE ---
+local dragging = false
+local dragStart = Vector2.zero
+local startPos = UDim2.new()
 
 topbar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
-		dragStart = input.Position
+		dragStart = Vector2.new(mouse.X, mouse.Y)
 		startPos = main.Position
 	end
 end)
 
 uis.InputChanged:Connect(function(input)
 	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = input.Position - dragStart
+		local delta = Vector2.new(mouse.X, mouse.Y) - dragStart
 		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 	end
 end)
