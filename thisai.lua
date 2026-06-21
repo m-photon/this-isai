@@ -1,10 +1,15 @@
+-- =======================================================================
+-- PRIVATE FE ANIMATIONS GUI WITH CUSTOM INSPECT ANIMATION
+-- PASTE THIS ENTIRE BLOCK AT THE VERY BOTTOM OF YOUR MAIN REANIMATION SCRIPT
+-- =======================================================================
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
--- Simplified GUI Parenting for Executors (like Xeno)
+-- High-compatibility GUI parenting for Xeno
 local guiParent
 local success, result = pcall(function() return gethui() end)
 if success and result then
@@ -122,7 +127,7 @@ buttonContainer.Name = "ButtonContainer"
 buttonContainer.Size = UDim2.new(1, -20, 1, -55)
 buttonContainer.Position = UDim2.new(0, 10, 0, 45)
 buttonContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-buttonContainer.BackgroundTransparency = 0.5 -- See-through for the diamond
+buttonContainer.BackgroundTransparency = 0.5
 buttonContainer.BorderSizePixel = 0
 buttonContainer.ScrollBarThickness = 6
 buttonContainer.ScrollBarImageColor3 = themeColor
@@ -136,4 +141,103 @@ containerCorner.Parent = buttonContainer
 local gridLayout = Instance.new("UIGridLayout")
 gridLayout.CellSize = UDim2.new(0, 145, 0, 40)
 gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
-gridLayout.SortOrder = Enum.
+gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+gridLayout.Parent = buttonContainer
+
+local padding = Instance.new("UIPadding")
+padding.PaddingTop = UDim.new(0, 10)
+padding.PaddingLeft = UDim.new(0, 10)
+padding.Parent = buttonContainer
+
+-- Helper function to make styled buttons
+local function createStyledButton(name, text, parent)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = themeColor
+    btn.Text = text
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 14
+    btn.TextColor3 = themeColor
+    btn.ZIndex = 3
+    btn.Parent = parent
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = btn
+    
+    btn.MouseEnter:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end)
+    btn.MouseLeave:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    end)
+    return btn
+end
+
+-- === CREATE BUTTONS ===
+local inspectorBtn = createStyledButton("InspectorButton", "Inspector", buttonContainer)
+
+for i = 1, 14 do
+    createStyledButton("BlankButton" .. i, "", buttonContainer)
+end
+
+gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    buttonContainer.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 20)
+end)
+
+-- Make the GUI Draggable
+local dragging, dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+titleLabel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+titleLabel.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- === ANIMATION INTEGRATION LOGIC ===
+inspectorBtn.MouseButton1Click:Connect(function()
+    -- This requires reanimated, ATTACK, Animation_Speed, Swait, Clerp, RightShoulder, LeftShoulder, RIGHTSHOULDERC0, and LEFTSHOULDERC0
+    -- to be active and defined in your main script's global environment.
+    if reanimated == true and ATTACK == false then
+        coroutine.resume(coroutine.create(function()
+            ATTACK = true
+            Rooted = true
+            
+            -- Moves hands neatly behind the back into a locked/clasped inspecting stance
+            for i = 0, 2, 0.1 / Animation_Speed do
+                Swait()
+                RightShoulder.C0 = Clerp(RightShoulder.C0, CFrame.new(1.0, 0, 0.7) * CFrame.Angles(math.rad(-45), 0, math.rad(-45)) * RIGHTSHOULDERC0, 1 / Animation_Speed)
+                LeftShoulder.C0 = Clerp(LeftShoulder.C0, CFrame.new(-1.0, 0, 0.7) * CFrame.Angles(math.rad(-45), 0, math.rad(45)) * LEFTSHOULDERC0, 1 / Animation_Speed)
+            end
+            
+            ATTACK = false
+            Rooted = false
+        end))
+    end
+end)
