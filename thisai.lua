@@ -217,44 +217,18 @@ end)
 
 -- === ANIMATION INTEGRATION LOGIC ===
 local inspecting = false
-local loopConnection = nil
-
--- Standard fallback bases if reanimation constants aren't global
-local rBase = RIGHTSHOULDERC0 or CFrame.new(1, 0.5, 0) * CFrame.Angles(0, math.rad(90), 0)
-local lBase = LEFTSHOULDERC0 or CFrame.new(-1, 0.5, 0) * CFrame.Angles(0, math.rad(-90), 0)
 
 inspectorBtn.MouseButton1Click:Connect(function()
     inspecting = not inspecting
     
     if inspecting then
+        -- Toggles visual UI state only; arms are completely untouched to prevent glitching
         inspectorBtn.Text = "Inspecting..."
         inspectorBtn.TextColor3 = Color3.fromRGB(255, 255, 0)
         inspectorBtn.BorderColor3 = Color3.fromRGB(255, 255, 0)
-        
-        -- High priority frame loop forces the joints to hold position against main scripts
-        loopConnection = RunService.Heartbeat:Connect(function()
-            local char = player.Character
-            if not char then return end
-            
-            -- Automatically searches entire model for joints to support reanimations/fake limbs
-            for _, joint in pairs(char:GetDescendants()) do
-                if joint:IsA("Motor6D") or joint:IsA("Weld") then
-                    if joint.Name == "Right Shoulder" or joint.Name == "RightShoulder" then
-                        joint.C0 = joint.C0:Lerp(CFrame.new(1.0, -0.1, 0.5) * CFrame.Angles(math.rad(-45), 0, math.rad(-30)) * rBase, 0.3)
-                    elseif joint.Name == "Left Shoulder" or joint.Name == "LeftShoulder" then
-                        joint.C0 = joint.C0:Lerp(CFrame.new(-1.0, -0.1, 0.5) * CFrame.Angles(math.rad(-45), 0, math.rad(30)) * lBase, 0.3)
-                    end
-                end
-            end
-        end)
     else
         inspectorBtn.Text = "Inspector"
         inspectorBtn.TextColor3 = themeColor
         inspectorBtn.BorderColor3 = themeColor
-        
-        if loopConnection then
-            loopConnection:Disconnect()
-            loopConnection = nil
-        end
     end
 end)
