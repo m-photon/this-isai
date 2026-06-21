@@ -215,20 +215,78 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- === ANIMATION INTEGRATION LOGIC ===
+
+-- === STANDALONE FE ANIMATION & NETLESS REPLICATION ENGINE ===
 local inspecting = false
+local loopConnection = nil
+
+-- Velocity vectors used to force network replication to the server
+local netVelocity = Vector3.new(0, 30, 0)
+
+-- Strict R6 Behind-the-back coordinates relative to the Torso center point
+local targetRightOffset = CFrame.new(0.35, -0.2, 0.55) * CFrame.Angles(math.rad(-45), math.rad(-15), math.rad(-20))
+local targetLeftOffset = CFrame.new(-0.35, -0.2, 0.55) * CFrame.Angles(math.rad(-45), math.rad(15), math.rad(20))
 
 inspectorBtn.MouseButton1Click:Connect(function()
     inspecting = not inspecting
     
+    local char = player.Character
+    local torso = char and char:FindFirstChild("Torso")
+    local rArm = char and char:FindFirstChild("Right Arm")
+    local lArm = char and char:FindFirstChild("Left Arm")
+    
+    if not torso or not rArm or not lArm then
+        inspecting = false
+        warn("FE Animation Failed: Character parts missing. Ensure you are using an R6 avatar.")
+        return
+    end
+
+    local rShoulder = torso:FindFirstChild("Right Shoulder")
+    local lShoulder = torso:FindFirstChild("Left Shoulder")
+
     if inspecting then
-        -- Toggles visual UI state only; arms are completely untouched to prevent glitching
         inspectorBtn.Text = "Inspecting..."
         inspectorBtn.TextColor3 = Color3.fromRGB(255, 255, 0)
         inspectorBtn.BorderColor3 = Color3.fromRGB(255, 255, 0)
+        
+        -- Sever joint properties locally so the server physics engine stops overriding them
+        if rShoulder then rShoulder.Part1 = nil end
+        if lShoulder then lShoulder.Part1 = nil end
+        
+        -- Local storage for interpolation transition
+        local currentRightCF = rArm.CFrame
+        local currentLeftCF = lArm.CFrame
+
+        -- High frequency loop bypassing server constraints completely (100% FE Replication)
+        loopConnection = RunService.Heartbeat:Connect(function()
+            if not player.Character or not torso:IsDescendantOf(player.Character) then
+                if loopConnection then loopConnection:Disconnect() end
+                return
+            end
+            
+            -- Keep claiming network ownership of limbs via forced velocity manipulation
+            rArm.Velocity = netVelocity
+            lArm.Velocity = netVelocity
+            
+            -- Linear Interpolate smoothly to target positions relative directly to Torso CFrame
+            currentRightCF = currentRightCF:Lerp(torso.CFrame * targetRightOffset, 0.25)
+            currentLeftCF = currentLeftCF:Lerp(torso.CFrame * targetLeftOffset, 0.25)
+            
+            rArm.CFrame = currentRightCF
+            lArm.CFrame = currentLeftCF
+        end)
     else
         inspectorBtn.Text = "Inspector"
         inspectorBtn.TextColor3 = themeColor
         inspectorBtn.BorderColor3 = themeColor
+        
+        if loopConnection then
+            loopConnection:Disconnect()
+            loopConnection = nil
+        end
+        
+        -- Instantly reconnect joints to allow default Roblox animations to take back control cleanly
+        if rShoulder then rShoulder.Part1 = rArm end
+        if lShoulder then lShoulder.Part1 = lArm end
     end
 end)
