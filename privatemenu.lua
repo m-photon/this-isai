@@ -26,13 +26,13 @@ mainFrame.Parent = screenGui
 --- FADED DIAMOND BACKGROUND ---
 local backgroundDiamond = Instance.new("ImageLabel")
 backgroundDiamond.Name = "BackgroundDiamond"
-backgroundDiamond.Size = UDim2.new(0.7, 0, 0.7, 0) -- Takes up 70% of the menu
-backgroundDiamond.Position = UDim2.new(0.5, 0, 0.5, 25) -- Centered perfectly under the top bar
+backgroundDiamond.Size = UDim2.new(0.7, 0, 0.7, 0)
+backgroundDiamond.Position = UDim2.new(0.5, 0, 0.5, 25) 
 backgroundDiamond.AnchorPoint = Vector2.new(0.5, 0.5)
 backgroundDiamond.BackgroundTransparency = 1
-backgroundDiamond.Image = "rbxassetid://6034287525" -- Roblox Diamond Asset ID
-backgroundDiamond.ImageTransparency = 0.85 -- Makes it faded/watermarked
-backgroundDiamond.ZIndex = 0 -- Ensures it stays behind the buttons
+backgroundDiamond.Image = "rbxassetid://6034287525"
+backgroundDiamond.ImageTransparency = 0.85 
+backgroundDiamond.ZIndex = 0 
 backgroundDiamond.Parent = mainFrame
 
 local dragBar = Instance.new("Frame")
@@ -173,6 +173,7 @@ local function getClosestPlayer(hrp)
 	return target
 end
 
+-- Reverted to the stable original Ghost Fling
 local function ghostFling()
 	if flinging then return end
 	
@@ -204,7 +205,7 @@ local function ghostFling()
 	selectionBox.Parent = targetChar
 	
 	local startTime = tick()
-	local duration = 0.8 
+	local duration = 0.6 
 	
 	local characterParts = {}
 	for _, part in pairs(char:GetDescendants()) do
@@ -212,8 +213,6 @@ local function ghostFling()
 			table.insert(characterParts, part)
 		end
 	end
-	
-	humanoid.PlatformStand = true 
 	
 	local loop
 	loop = RunService.Stepped:Connect(function()
@@ -227,7 +226,6 @@ local function ghostFling()
 			hrp.AssemblyAngularVelocity = Vector3.zero
 			hrp.CFrame = savedCFrame 
 			
-			humanoid.PlatformStand = false
 			humanoid:ChangeState(Enum.HumanoidStateType.Running)
 			camera.CameraType = oldCameraType
 			camera.CameraSubject = humanoid
@@ -240,11 +238,9 @@ local function ghostFling()
 			part.CanCollide = false
 		end
 		
-		local randomJitter = Vector3.new(math.random(-10, 10) / 100, math.random(-10, 10) / 100, math.random(-10, 10) / 100)
-		hrp.CFrame = targetPart.CFrame * CFrame.new(randomJitter)
-		
-		hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-		hrp.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+		hrp.CFrame = targetPart.CFrame
+		hrp.AssemblyLinearVelocity = Vector3.zero
+		hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
 	end)
 end
 
