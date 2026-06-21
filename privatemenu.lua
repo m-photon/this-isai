@@ -167,7 +167,7 @@ end
 local cBtn = createBtn("cBtn", "Silent Aim [C]")
 local eBtn = createBtn("eBtn", "Player ESP [E]")
 local tBtn = createBtn("tBtn", "Tracers [T]")
-local vBtn = createBtn("vBtn", "UN Fling [V]")
+local vBtn = createBtn("vBtn", "Execute Fling [V]")
 local iBtn = createBtn("iBtn", "Server Intel")
 
 --- CLEAN STATUS HUD ---
@@ -201,7 +201,7 @@ end
 local cStatus = createStatus("cStatus", "> [C] Silent Aim Active", Color3.fromRGB(100, 255, 100))
 local eStatus = createStatus("eStatus", "> [E] Player ESP Active", Color3.fromRGB(100, 200, 255))
 local tStatus = createStatus("tStatus", "> [T] Tracers Active", Color3.fromRGB(255, 150, 50))
-local vStatus = createStatus("vStatus", "> [V] Fling Ready", Color3.fromRGB(255, 100, 100))
+local vStatus = createStatus("vStatus", "> Flinging Target...", Color3.fromRGB(255, 100, 100))
 
 --- FUNCTIONS ---
 local function getTarget(hrp)
@@ -336,25 +336,6 @@ local function toggleTracers()
 	tBtn.BackgroundColor3 = state.t and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 end
 
-cBtn.MouseButton1Click:Connect(toggleSilentAim)
-eBtn.MouseButton1Click:Connect(toggleESP)
-tBtn.MouseButton1Click:Connect(toggleTracers)
-
-vBtn.MouseButton1Click:Connect(function()
-	state.v = not state.v
-	vStatus.Visible = state.v
-	vBtn.BackgroundColor3 = state.v and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-end)
-
-iBtn.MouseButton1Click:Connect(function()
-	sideOpen = not sideOpen
-	sideMenu.Visible = sideOpen
-	iBtn.BackgroundColor3 = sideOpen and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-	if sideOpen then
-		refreshIntel()
-	end
-end)
-
 --- GHOST FLING ---
 local function ghostFling()
 	if state.fling then return end
@@ -368,6 +349,7 @@ local function ghostFling()
 	if not tp then return end
 	
 	state.fling = true
+	vStatus.Visible = true
 	local sc = hrp.CFrame
 	local oct, occ = cam.CameraType, cam.CFrame
 	cam.CameraType = Enum.CameraType.Scriptable
@@ -382,26 +364,50 @@ local function ghostFling()
 	local start = tick()
 	
 	local conn; conn = rs.Heartbeat:Connect(function()
-		if tick() - start > 0.8 or not tp or not tp.Parent or not char or not hrp then
+		if tick() - start > 1.2 or not tp or not tp.Parent or not char or not hrp or not hum then
 			conn:Disconnect()
 			if sb then sb:Destroy() end
 			hrp.AssemblyLinearVelocity, hrp.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
 			hrp.CFrame = sc
 			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-			cam.CameraType, cam.CameraSubject = oct, hum
+			cam.CameraType = oct
 			state.fling = false
+			vStatus.Visible = false
 			return
 		end
 		
-		local ox = math.random(-1, 1) * 0.1
-		local oy = math.random(-1, 1) * 0.1
-		local oz = math.random(-1, 1) * 0.1
+		-- Loop through character parts to disable collisions completely
+		for _, part in pairs(char:GetChildren()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
 		
-		hrp.CFrame = tp.CFrame * CFrame.new(ox, oy, oz)
-		hrp.AssemblyLinearVelocity = Vector3.new(10000, 10000, 10000)
-		hrp.AssemblyAngularVelocity = Vector3.new(100000, 100000, 100000)
+		-- Force physics state so humanoids cannot stabilize velocity values
+		hum:ChangeState(Enum.HumanoidStateType.Physics)
+		
+		-- Maximum angular spin + massive structural velocity transfer
+		hrp.AssemblyAngularVelocity = Vector3.new(0, 999999, 0)
+		hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+		
+		-- Ram directly through target volume continuously
+		hrp.CFrame = tp.CFrame * CFrame.Angles(math.rad(math.random(0,360)), math.rad(math.random(0,360)), math.rad(math.random(0,360)))
 	end)
 end
+
+cBtn.MouseButton1Click:Connect(toggleSilentAim)
+eBtn.MouseButton1Click:Connect(toggleESP)
+tBtn.MouseButton1Click:Connect(toggleTracers)
+vBtn.MouseButton1Click:Connect(ghostFling)
+
+iBtn.MouseButton1Click:Connect(function()
+	sideOpen = not sideOpen
+	sideMenu.Visible = sideOpen
+	iBtn.BackgroundColor3 = sideOpen and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+	if sideOpen then
+		refreshIntel()
+	end
+end)
 
 --- SILENT AIM HOOKS ---
 local oldNamecall
@@ -447,7 +453,7 @@ end))
 
 uis.InputBegan:Connect(function(k, p)
 	if p then return end
-	if k.KeyCode == Enum.KeyCode.V and state.v then
+	if k.KeyCode == Enum.KeyCode.V then
 		ghostFling()
 	elseif k.KeyCode == Enum.KeyCode.C then
 		toggleSilentAim()
@@ -459,31 +465,25 @@ uis.InputBegan:Connect(function(k, p)
 end)
 
 --- SMOOTH GUI DRAG LOGIC ---
-local dragging, dragInput, dragStart, startPos
+local dragging, dragStart, startPos
 
 topbar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
 		dragStart = input.Position
 		startPos = main.Position
-
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
-end)
-
-topbar.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
 	end
 end)
 
 uis.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		local delta = input.Position - dragStart
 		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+uis.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
 	end
 end)
