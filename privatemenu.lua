@@ -143,31 +143,33 @@ local function fling()
 	flinging = true
 	humanoid.PlatformStand = true
 	
+	-- Strict property assignment sequence to block default cyan rendering
 	local hl = Instance.new("Highlight")
 	hl.Name = "VisorTargetHighlight"
-	hl.FillColor = Color3.fromRGB(255, 0, 0)     -- Prevents default Roblox cyan flash
-	hl.FillTransparency = 1                     -- Perfectly transparent center
-	hl.OutlineColor = Color3.fromRGB(255, 0, 0)  -- Solid red outline
+	hl.Adornee = targetChar
+	hl.FillColor = Color3.fromRGB(255, 0, 0)
+	hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+	hl.FillTransparency = 1
 	hl.OutlineTransparency = 0
+	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	hl.Parent = targetChar
 	
 	local camera = workspace.CurrentCamera
-	
 	local savedCFrame = hrp.CFrame
 	local rootJoint = hrp:FindFirstChild("RootJoint") or char:FindFirstChild("RootJoint", true) or (char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root"))
 	local originalC0 = rootJoint and rootJoint.C0
 	
 	local startTime = tick()
-	local travelTime = 0.25 
-	local duration = 1.3  
+	local travelTime = 0.1  -- Fast gap closer
+	local duration = 0.35  -- Total time before controls hand back to you
 	
 	local function resetPhysics()
 		if not char then return end
 		for _, part in pairs(char:GetDescendants()) do
 			if part:IsA("BasePart") then
-				part.Velocity = Vector3.zero
-				part.RotVelocity = Vector3.zero
 				pcall(function()
+					part.Velocity = Vector3.zero
+					part.RotVelocity = Vector3.zero
 					part.AssemblyLinearVelocity = Vector3.zero
 					part.AssemblyAngularVelocity = Vector3.zero
 				end)
@@ -188,8 +190,9 @@ local function fling()
 			resetPhysics()
 			if camera and humanoid then camera.CameraSubject = humanoid end
 			
+			-- Instant physics release so you don't stick or freeze
 			humanoid.PlatformStand = false
-			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			humanoid:ChangeState(Enum.HumanoidStateType.Running)
 			flinging = false
 			return
 		end
@@ -208,7 +211,7 @@ local function fling()
 			hrp.AssemblyAngularVelocity = Vector3.new(15000, 15000, 15000)
 		end)
 		
-		-- Moves visual body seamlessly above the moving HRP instead of pinning it to the home position
+		-- Keeps visual body in skybox tracking directly over the target
 		rootJoint.C0 = CFrame.new(0, 2000, 0) * originalC0
 	end)
 end
