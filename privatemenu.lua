@@ -143,11 +143,11 @@ local function fling()
 	flinging = true
 	humanoid.PlatformStand = true
 	
-	-- Replaced completely with SelectionBox to eliminate the cyan box bug permanently
+	-- Clear line-only SelectionBox completely bypasses default cyan engine rendering
 	local selectionBox = Instance.new("SelectionBox")
 	selectionBox.Name = "VisorTargetOutline"
 	selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
-	selectionBox.LineThickness = 0.05
+	selectionBox.LineThickness = 0.04
 	selectionBox.Adornee = targetChar
 	selectionBox.Parent = targetChar
 	
@@ -155,6 +155,17 @@ local function fling()
 	local savedCFrame = hrp.CFrame
 	local rootJoint = hrp:FindFirstChild("RootJoint") or char:FindFirstChild("RootJoint", true) or (char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root"))
 	local originalC0 = rootJoint and rootJoint.C0
+	
+	-- Stable Force injection parameters (Replaces glitchy AssemblyLinearVelocity loops)
+	local thrust = Instance.new("BodyThrust")
+	thrust.Force = Vector3.new(999999, 0, 999999)
+	thrust.Location = hrp.Position
+	thrust.Parent = hrp
+	
+	local spin = Instance.new("BodyAngularVelocity")
+	spin.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	spin.AngularVelocity = Vector3.new(0, 99999, 0)
+	spin.Parent = hrp
 	
 	local startTime = tick()
 	local travelTime = 0.1
@@ -166,11 +177,15 @@ local function fling()
 		
 		if elapsed > duration or not targetPart or not targetPart.Parent or not char or not hrp or not rootJoint then
 			loop:Disconnect()
+			
+			-- Clean up physics parameters instantly
+			if thrust then thrust:Destroy() end
+			if spin then spin:Destroy() end
 			if selectionBox then selectionBox:Destroy() end
 			
 			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
 			
-			-- Hand off velocity seamlessly to your current movement direction so you don't freeze in place
+			-- Release momentum smoothly into your walk vector without hard freezing
 			pcall(function()
 				hrp.AssemblyLinearVelocity = humanoid.MoveDirection * humanoid.WalkSpeed
 				hrp.AssemblyAngularVelocity = Vector3.zero
@@ -193,11 +208,7 @@ local function fling()
 		
 		hrp.CFrame = CFrame.new(currentPos) * savedCFrame.Rotation
 		
-		pcall(function()
-			hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-			hrp.AssemblyAngularVelocity = Vector3.new(15000, 15000, 15000)
-		end)
-		
+		-- Keeps visual joints safely hidden 2,000 studs high without buckling physics assembly
 		rootJoint.C0 = CFrame.new(0, 2000, 0) * originalC0
 	end)
 end
