@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 local targetParent = pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or localPlayer:WaitForChild("PlayerGui")
 
 local oldGui = targetParent:FindFirstChild("nos_dywll_PrivateMenu")
@@ -60,7 +61,7 @@ visorButton.Name = "VisorButton"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
 visorButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 visorButton.BorderSizePixel = 0
-visorButton.Text = "Move all un"
+visorButton.Text = "Visor"
 visorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 visorButton.TextSize = 22
 visorButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
@@ -79,7 +80,7 @@ local visorText = Instance.new("TextLabel")
 visorText.Name = "VisorText"
 visorText.Size = UDim2.new(1, 0, 1, 0)
 visorText.BackgroundTransparency = 1
-visorText.Text = "V=Item Swarm"
+visorText.Text = "V=Ghost Fling"
 visorText.TextColor3 = Color3.fromRGB(255, 75, 75)
 visorText.TextSize = 20
 visorText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
@@ -111,29 +112,13 @@ local function getClosestPlayer(hrp)
 	return target
 end
 
--- New function to scan the map for anything we can throw
-local function getUnanchoredMapParts(targetChar)
-	local mapParts = {}
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("BasePart") and not obj.Anchored then
-			-- Ensure we don't grab our own body parts or the target's body parts
-			local isOurs = localPlayer.Character and obj:IsDescendantOf(localPlayer.Character)
-			local isTargets = targetChar and obj:IsDescendantOf(targetChar)
-			
-			if not isOurs and not isTargets then
-				table.insert(mapParts, obj)
-			end
-		end
-	end
-	return mapParts
-end
-
-local function fling()
+local function ghostFling()
 	if flinging then return end
 	
 	local char = localPlayer.Character
 	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
+	if not hrp or not humanoid then return end
 	
 	local targetChar = getClosestPlayer(hrp)
 	if not targetChar then return end
@@ -143,6 +128,15 @@ local function fling()
 	
 	flinging = true
 	
+	-- Save original state
+	local savedCFrame = hrp.CFrame
+	local oldCameraType = camera.CameraType
+	local oldCameraCFrame = camera.CFrame
+	
+	-- Detach camera so your screen doesn't spin wildly
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.CFrame = oldCameraCFrame
+	
 	local selectionBox = Instance.new("SelectionBox")
 	selectionBox.Name = "VisorTargetOutline"
 	selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
@@ -150,40 +144,54 @@ local function fling()
 	selectionBox.Adornee = targetChar
 	selectionBox.Parent = targetChar
 	
-	-- Grab all unanchored parts currently in the workspace
-	local unanchoredParts = getUnanchoredMapParts(targetChar)
-	
 	local startTime = tick()
-	local duration = 1.5 -- Increased duration slightly so the items have time to do damage
+	local duration = 0.6 -- Short and aggressive
+	
+	-- Pre-collect parts for optimization
+	local characterParts = {}
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") then
+			table.insert(characterParts, part)
+		end
+	end
 	
 	local loop
 	loop = RunService.Stepped:Connect(function()
 		local elapsed = tick() - startTime
 		
-		-- End the loop if time is up, the target died, or they left
-		if elapsed > duration or not targetPart or not targetPart.Parent then
+		if elapsed > duration or not targetPart or not targetPart.Parent or not char or not hrp then
 			loop:Disconnect()
 			if selectionBox then selectionBox:Destroy() end
+			
+			-- Restore character and camera cleanly
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.AssemblyAngularVelocity = Vector3.zero
+			hrp.CFrame = savedCFrame 
+			
+			humanoid:ChangeState(Enum.HumanoidStateType.Running)
+			camera.CameraType = oldCameraType
+			camera.CameraSubject = humanoid
+			
 			flinging = false
 			return
 		end
 		
-		-- Continuously teleport all map items to the target and spin them rapidly
-		for _, part in ipairs(unanchoredParts) do
-			if part and part.Parent then
-				part.CanCollide = false
-				part.CFrame = targetPart.CFrame
-				part.AssemblyLinearVelocity = Vector3.zero
-				part.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
-			end
+		-- Ghost mode: Turn off collisions so you don't get stuck on the map
+		for _, part in ipairs(characterParts) do
+			part.CanCollide = false
 		end
+		
+		-- The actual FE Fling mechanism
+		hrp.CFrame = targetPart.CFrame
+		hrp.AssemblyLinearVelocity = Vector3.zero
+		hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
 	end)
 end
 
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	if visorActive and input.KeyCode == Enum.KeyCode.V then
-		fling()
+		ghostFling()
 	end
 end)
 
