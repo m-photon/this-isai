@@ -212,34 +212,54 @@ local function flingNearestPlayer()
 	local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
 	bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 	bodyAngularVelocity.P = 1000000000000000000000000000
-	bodyAngularVelocity.AngularVelocity = Vector3.new(10000, 10000, 10000)
+	bodyAngularVelocity.AngularVelocity = Vector3.new(15000, 15000, 15000)
 	bodyAngularVelocity.Parent = hrp
 	
 	local startTime = tick()
-	local travelDuration = 0.3 
-	local totalDuration = 1.6  
+	local travelDuration = 0.25 
+	local totalDuration = 1.4  
 	
 	local connection
 	connection = RunService.Heartbeat:Connect(function()
 		local elapsed = tick() - startTime
 		
-		-- Cleanup condition
+		-- Cleanup condition (Fixed to stabilize your physics and prevent self-flinging)
 		if elapsed > totalDuration or not targetPart or not targetPart.Parent or not char or not hrp or not rootJoint then
 			
 			-- Destroy forces and target highlight if it still exists
-			bodyAngularVelocity:Destroy()
+			if bodyAngularVelocity then bodyAngularVelocity:Destroy() end
 			if targetHighlight then targetHighlight:Destroy() end
+			
+			-- CRITICAL FIX: Temporarily anchor the root to cancel joint stretch tension forces
+			hrp.Anchored = true
 			
 			-- Snap root completely back and restore normal character matrix configurations
 			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
 			hrp.CFrame = savedCFrame
-			hrp.Velocity = Vector3.new(0, 0, 0)
 			
+			-- CRITICAL FIX: Wipe out both old and modern Engine velocities instantly
+			hrp.Velocity = Vector3.new(0, 0, 0)
+			hrp.RotVelocity = Vector3.new(0, 0, 0)
+			pcall(function()
+				hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+				hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+			end)
+			
+			-- Restore original collisions
 			for part, canCollide in pairs(oldCollisions) do
 				if part and part.Parent then part.CanCollide = canCollide end
 			end
 			
 			if camera and humanoid then camera.CameraSubject = humanoid end
+			
+			-- Wait a tiny physics step for assembly stabilization, then release safely
+			task.delay(0.05, function()
+				if hrp and hrp.Parent then
+					hrp.Velocity = Vector3.new(0, 0, 0)
+					hrp.RotVelocity = Vector3.new(0, 0, 0)
+					hrp.Anchored = false
+				end
+			end)
 			
 			connection:Disconnect()
 			flinging = false
@@ -259,7 +279,12 @@ local function flingNearestPlayer()
 		
 		-- Invisible root hub tracks onto target to perform the physics crush fling
 		hrp.CFrame = CFrame.new(currentPos) * savedCFrame.Rotation
-		hrp.Velocity = Vector3.new(75, 75, 75) 
+		
+		-- FIX: Upgraded velocity vector to 99999 so it overpowers the target's physics solver
+		hrp.Velocity = Vector3.new(99999, 99999, 99999) 
+		pcall(function()
+			hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+		end)
 		
 		-- Counter-Inverse Matrix: Keeps your visible body parts completely frozen at home base
 		rootJoint.C0 = hrp.CFrame:Inverse() * savedCFrame * originalC0
