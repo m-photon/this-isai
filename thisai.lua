@@ -1,19 +1,21 @@
--- Private FE Animations GUI - Button Layout (Studio UI Mockup)
+-- Executable Private FE Animations GUI
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+
+-- Executor GUI Protection (Hides the GUI in CoreGui or gethui() if supported)
+local guiParent = (gethui and gethui()) or pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
 
 -- Define colors
 local themeColor = Color3.fromRGB(0, 255, 120) -- Custom Green
 local grayColor = Color3.fromRGB(100, 100, 100) -- Mid-Gray for diamond
 
 -- Prevent duplicate GUIs if the script runs multiple times
-if playerGui:FindFirstChild("PrivateAnimationsGui") then
-    playerGui.PrivateAnimationsGui:Destroy()
+if guiParent:FindFirstChild("PrivateAnimationsGui") then
+    guiParent.PrivateAnimationsGui:Destroy()
 end
 
 -- Create the main ScreenGui
@@ -21,7 +23,7 @@ local mainGui = Instance.new("ScreenGui")
 mainGui.Name = "PrivateAnimationsGui"
 mainGui.ResetOnSpawn = false
 mainGui.IgnoreGuiInset = true
-mainGui.Parent = playerGui
+mainGui.Parent = guiParent
 
 -- Create the Main Frame
 local mainFrame = Instance.new("Frame")
@@ -85,30 +87,27 @@ closeButton.MouseButton1Click:Connect(function()
 end)
 
 -- === CREATE THE SPINNING DIAMOND ===
--- Created using a standard Frame rotated 45 degrees
 local diamond = Instance.new("Frame")
 diamond.Name = "SpinningDiamond"
-diamond.Size = UDim2.new(0, 120, 0, 120) -- Size of the diamond
-diamond.AnchorPoint = Vector2.new(0.5, 0.5) -- Center the anchor
-diamond.Position = UDim2.new(0.5, 0, 0.5, 0) -- Center on MainFrame
+diamond.Size = UDim2.new(0, 120, 0, 120)
+diamond.AnchorPoint = Vector2.new(0.5, 0.5)
+diamond.Position = UDim2.new(0.5, 0, 0.5, 0)
 diamond.BackgroundColor3 = grayColor
 diamond.BorderSizePixel = 0
-diamond.Rotation = 45 -- Base diamond shape
-diamond.ZIndex = 1 -- Keep it behind buttons (buttons have higher priority by default in scrolling frames)
+diamond.Rotation = 45
+diamond.ZIndex = 1
 diamond.Parent = mainFrame
 
 local diamondCorner = Instance.new("UICorner")
-diamondCorner.CornerRadius = UDim.new(0, 10) -- Slightly round the tips
+diamondCorner.CornerRadius = UDim.new(0, 10)
 diamondCorner.Parent = diamond
 
--- Simple rotation script
 task.spawn(function()
-    while diamond.Parent do -- Loop stops if GUI is closed
-        local dt = task.wait() -- Wait for frame
-        diamond.Rotation = diamond.Rotation + (90 * dt) -- Rotate 90 degrees per second
+    while diamond.Parent do
+        local dt = task.wait()
+        diamond.Rotation = diamond.Rotation + (90 * dt)
     end
 end)
--- ===============================
 
 -- Create a ScrollingFrame to hold the buttons
 local buttonContainer = Instance.new("ScrollingFrame")
@@ -116,10 +115,11 @@ buttonContainer.Name = "ButtonContainer"
 buttonContainer.Size = UDim2.new(1, -20, 1, -55)
 buttonContainer.Position = UDim2.new(0, 10, 0, 45)
 buttonContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-buttonContainer.BackgroundTransparency = 0.5 -- Allow diamond to be visible
+buttonContainer.BackgroundTransparency = 0.5
 buttonContainer.BorderSizePixel = 0
 buttonContainer.ScrollBarThickness = 6
 buttonContainer.ScrollBarImageColor3 = themeColor
+buttonContainer.ZIndex = 2
 buttonContainer.Parent = mainFrame
 
 local containerCorner = Instance.new("UICorner")
@@ -143,3 +143,96 @@ local function createStyledButton(name, text, parent)
     btn.Name = name
     btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     btn.BorderSizePixel = 1
+    btn.BorderColor3 = themeColor
+    btn.Text = text
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 14
+    btn.TextColor3 = themeColor
+    btn.ZIndex = 3
+    btn.Parent = parent
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = btn
+    
+    btn.MouseEnter:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end)
+    btn.MouseLeave:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    end)
+    return btn
+end
+
+-- === CREATE THE INSPECTOR BUTTON ===
+local inspectorBtn = createStyledButton("InspectorButton", "Inspector", buttonContainer)
+
+-- Generate remaining blank buttons
+for i = 1, 14 do
+    createStyledButton("BlankButton" .. i, "", buttonContainer)
+end
+
+-- Update CanvasSize based on the number of buttons
+gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    buttonContainer.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 20)
+end)
+
+-- Make the GUI Draggable
+local dragging, dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+titleLabel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+titleLabel.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- === ANIMATION INTEGRATION LOGIC ===
+inspectorBtn.MouseButton1Click:Connect(function()
+    -- This pcall ensures the GUI won't crash if it's run without the main FE script's variables
+    local success, err = pcall(function()
+        if reanimated == true and ATTACK == false then
+            coroutine.resume(coroutine.create(function()
+                ATTACK = true
+                Rooted = true
+                
+                -- ONLY moves the hands behind the back, nothing else
+                for i = 0, 2, 0.1 / Animation_Speed do
+                    Swait()
+                    RightShoulder.C0 = Clerp(RightShoulder.C0, CFrame.new(1.1, 0.3, 0.6) * CFrame.Angles(math.rad(-45), math.rad(-10), math.rad(-30)) * RIGHTSHOULDERC0, 1 / Animation_Speed)
+                    LeftShoulder.C0 = Clerp(LeftShoulder.C0, CFrame.new(-1.1, 0.3, 0.6) * CFrame.Angles(math.rad(-45), math.rad(10), math.rad(30)) * LEFTSHOULDERC0, 1 / Animation_Speed)
+                end
+                
+                ATTACK = false
+                Rooted = false
+            end))
+        end
+    end)
+    
+    if not success then
+        warn("Animation failed to play. Make sure this script is executed alongside your FE Reanimation variables (Swait, Clerp, RootJoint, etc.). Error: " .. tostring(err))
+    end
+end)
