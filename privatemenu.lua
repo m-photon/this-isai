@@ -143,25 +143,25 @@ local function fling()
 	flinging = true
 	humanoid.PlatformStand = true
 	
-	-- Strict property assignment sequence to block default cyan rendering
+	local camera = workspace.CurrentCamera
+	
+	-- Highlight fix: Parented to Camera to destroy the engine's default cyan box bug
 	local hl = Instance.new("Highlight")
 	hl.Name = "VisorTargetHighlight"
-	hl.Adornee = targetChar
 	hl.FillColor = Color3.fromRGB(255, 0, 0)
 	hl.OutlineColor = Color3.fromRGB(255, 0, 0)
 	hl.FillTransparency = 1
 	hl.OutlineTransparency = 0
-	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	hl.Parent = targetChar
+	hl.Adornee = targetChar
+	hl.Parent = camera
 	
-	local camera = workspace.CurrentCamera
 	local savedCFrame = hrp.CFrame
 	local rootJoint = hrp:FindFirstChild("RootJoint") or char:FindFirstChild("RootJoint", true) or (char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root"))
 	local originalC0 = rootJoint and rootJoint.C0
 	
 	local startTime = tick()
-	local travelTime = 0.1  -- Fast gap closer
-	local duration = 0.35  -- Total time before controls hand back to you
+	local travelTime = 0.1
+	local duration = 0.35
 	
 	local function resetPhysics()
 		if not char then return end
@@ -190,7 +190,6 @@ local function fling()
 			resetPhysics()
 			if camera and humanoid then camera.CameraSubject = humanoid end
 			
-			-- Instant physics release so you don't stick or freeze
 			humanoid.PlatformStand = false
 			humanoid:ChangeState(Enum.HumanoidStateType.Running)
 			flinging = false
@@ -211,7 +210,6 @@ local function fling()
 			hrp.AssemblyAngularVelocity = Vector3.new(15000, 15000, 15000)
 		end)
 		
-		-- Keeps visual body in skybox tracking directly over the target
 		rootJoint.C0 = CFrame.new(0, 2000, 0) * originalC0
 	end)
 end
