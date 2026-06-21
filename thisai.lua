@@ -1,13 +1,14 @@
--- Private FE Animations GUI (Studio UI Mockup)
+-- Private FE Animations GUI - Button Layout (Studio UI Mockup)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Define the custom Green color theme
-local themeColor = Color3.fromRGB(0, 255, 120) -- A sharp, lime/neon green
+local themeColor = Color3.fromRGB(0, 255, 120)
 
 -- Prevent duplicate GUIs if the script runs multiple times
 if playerGui:FindFirstChild("PrivateAnimationsGui") then
@@ -18,21 +19,20 @@ end
 local mainGui = Instance.new("ScreenGui")
 mainGui.Name = "PrivateAnimationsGui"
 mainGui.ResetOnSpawn = false
-mainGui.IgnoreGuiInset = true -- Better for full screen control
+mainGui.IgnoreGuiInset = true
 mainGui.Parent = playerGui
 
--- Create the Main Frame (Black Background with Green Border)
+-- Create the Main Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 500, 0, 300)
 mainFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Deep black
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 2
-mainFrame.BorderColor3 = themeColor -- Applied green border
+mainFrame.BorderColor3 = themeColor
 mainFrame.Active = true
 mainFrame.Parent = mainGui
 
--- Add a UICorner for smoother edges
 local frameCorner = Instance.new("UICorner")
 frameCorner.CornerRadius = UDim.new(0, 8)
 frameCorner.Parent = mainFrame
@@ -41,77 +41,78 @@ frameCorner.Parent = mainFrame
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "Title"
 titleLabel.Size = UDim2.new(1, 0, 0, 35)
-titleLabel.BackgroundColor3 = Color3.fromRGB(5, 5, 5) -- Slightly darker top bar
+titleLabel.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
 titleLabel.BorderSizePixel = 0
--- Modification: Updated title text
 titleLabel.Text = " nos_dywll's private FE animations"
-titleLabel.Font = Enum.Font.GothamBold -- Sleeker font than cartoon for this theme
+titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 16
--- Modification: Title text is now green
 titleLabel.TextColor3 = themeColor 
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = mainFrame
 
--- Modification: The SpongeBob Icon (faceLabel) block has been removed.
+-- Create a ScrollingFrame to hold the buttons
+local buttonContainer = Instance.new("ScrollingFrame")
+buttonContainer.Name = "ButtonContainer"
+buttonContainer.Size = UDim2.new(1, -20, 1, -55)
+buttonContainer.Position = UDim2.new(0, 10, 0, 45)
+buttonContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+buttonContainer.BorderSizePixel = 0
+buttonContainer.ScrollBarThickness = 6
+buttonContainer.ScrollBarImageColor3 = themeColor
+buttonContainer.Parent = mainFrame
 
--- Create the Code Editor Box
-local editor = Instance.new("TextBox")
-editor.Name = "Editor"
-editor.Size = UDim2.new(1, -20, 1, -95)
-editor.Position = UDim2.new(0, 10, 0, 45)
-editor.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Slightly lighter black
-editor.TextColor3 = Color3.fromRGB(220, 220, 220) -- Slightly dimmed white text
-editor.Text = "-- private animation suite loaded\n-- waiting for selection..."
-editor.Font = Enum.Font.Code
-editor.TextSize = 14
-editor.TextXAlignment = Enum.TextXAlignment.Left
-editor.TextYAlignment = Enum.TextYAlignment.Top
-editor.ClearTextOnFocus = false
-editor.MultiLine = true
-editor.Parent = mainFrame
+local containerCorner = Instance.new("UICorner")
+containerCorner.CornerRadius = UDim.new(0, 4)
+containerCorner.Parent = buttonContainer
 
-local editorCorner = Instance.new("UICorner")
-editorCorner.CornerRadius = UDim.new(0, 4)
-editorCorner.Parent = editor
+local gridLayout = Instance.new("UIGridLayout")
+gridLayout.CellSize = UDim2.new(0, 145, 0, 40)
+gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+gridLayout.Parent = buttonContainer
 
--- Function to generate green-themed buttons easily
-local function createButton(name, text, pos)
+local padding = Instance.new("UIPadding")
+padding.PaddingTop = UDim.new(0, 10)
+padding.PaddingLeft = UDim.new(0, 10)
+padding.Parent = buttonContainer
+
+-- Helper function to make styled buttons
+local function createStyledButton(name, text, parent)
     local btn = Instance.new("TextButton")
     btn.Name = name
-    btn.Size = UDim2.new(0, 110, 0, 35)
-    btn.Position = pos
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Dark button backgrounds
-    btn.BorderSizePixel = 1 -- Keeping border for structure
-    btn.BorderColor3 = themeColor -- Applied green border to buttons
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = themeColor
     btn.Text = text
     btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 16
-    btn.TextColor3 = themeColor -- Button text is green
-    btn.Parent = mainFrame
+    btn.TextSize = 14
+    btn.TextColor3 = themeColor
+    btn.Parent = parent
     
     local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0, 4)
     btnCorner.Parent = btn
     
-    -- Basic Hover Effect
     btn.MouseEnter:Connect(function()
         btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     end)
     btn.MouseLeave:Connect(function()
         btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     end)
-    
     return btn
 end
 
--- Create the Bottom Buttons (Kept layout similar to executor for comparison)
-local playBtn = createButton("Play", "Play", UDim2.new(0, 10, 1, -45))
-local stopBtn = createButton("Stop", "Stop", UDim2.new(0, 130, 1, -45))
-local configBtn = createButton("Config", "Config", UDim2.new(1, -120, 1, -45))
+-- === CREATE THE INSPECTOR BUTTON ===
+local inspectorBtn = createStyledButton("InspectorButton", "Inspector", buttonContainer)
 
--- Wire up the Stop button (previously Clear) to clear the text
-stopBtn.MouseButton1Click:Connect(function()
-    editor.Text = "-- animations stopped\n-- buffer cleared"
+-- Generate remaining blank buttons
+for i = 1, 14 do
+    createStyledButton("BlankButton" .. i, "", buttonContainer)
+end
+
+-- Update CanvasSize based on the number of buttons
+gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    buttonContainer.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 20)
 end)
 
 -- Make the GUI Draggable
@@ -127,7 +128,6 @@ titleLabel.InputBegan:Connect(function(input)
         dragging = true
         dragStart = input.Position
         startPos = mainFrame.Position
-        
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -146,4 +146,38 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         update(input)
     end
+end)
+
+-- === ANIMATION INTEGRATION LOGIC ===
+
+-- This is where you connect the GUI to the script you provided.
+inspectorBtn.MouseButton1Click:Connect(function()
+    print("Inspector button clicked!")
+    
+    -- NOTE: To make this actually play the animation from your script, 
+    -- you must integrate this GUI script INSIDE your ServerAdmin() function.
+    -- Specifically, it needs access to these variables from your script:
+    -- RootJoint, Neck, RightShoulder, LeftShoulder, RightHip, LeftHip, ATTACK, Rooted
+    
+    -- Example of how it hooks up (assuming this block is pasted inside your ServerAdmin scope):
+    --[[
+    if reanimated == true and ATTACK == false then
+        coroutine.resume(coroutine.create(function()
+            ATTACK = true
+            Rooted = true
+            
+            -- Your animation sequence here (Example: first few frames of IntroThing)
+            for i=0, 0.4, 0.1 / Animation_Speed do
+                Swait()
+                RootJoint.C0 = Clerp(RootJoint.C0,ROOTC0 * CFrame.new(0, -0.31, -0.65 + 0.05 * math.cos(SINE / 12)) * CFrame.Angles(math.rad(60), 0, 0), 1 / Animation_Speed)
+                Neck.C0 = Clerp(Neck.C0, NECKC0 * CFrame.Angles(math.rad(0 - 2.5 * math.sin(SINE / 12)), 0, 0), 1 / Animation_Speed)
+                RightShoulder.C0 = Clerp(RightShoulder.C0, CFrame.new(1.35, 0.5, -1.4) * CFrame.Angles(math.rad(65), 0, math.rad(-15)) * RIGHTSHOULDERC0, 1 / Animation_Speed)
+                LeftShoulder.C0 = Clerp(LeftShoulder.C0, CFrame.new(-1.5, 0.5, 0) * CFrame.Angles(0, math.rad(5), math.rad(-35)) * LEFTSHOULDERC0, 1 / Animation_Speed)
+            end
+            
+            ATTACK = false
+            Rooted = false
+        end))
+    end
+    ]]
 end)
