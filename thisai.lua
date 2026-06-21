@@ -7,80 +7,9 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local torso = char:WaitForChild("Torso")
-local rootPart = char:WaitForChild("HumanoidRootPart")
 
 -- =======================================================================
--- PART 1: THE FE REANIMATION & ANIMATION CORE ENGINE
--- =======================================================================
-local reanimated = true
-local ATTACK = false
-local Rooted = false
-local Animation_Speed = 2
-local SINE = 0
-
--- Grab original motor joints
-local RootJoint = rootPart:WaitForChild("Root Joint")
-local Neck = torso:WaitForChild("Neck")
-local RightShoulder = torso:WaitForChild("Right Shoulder")
-local LeftShoulder = torso:WaitForChild("Left Shoulder")
-local RightHip = torso:WaitForChild("Right Hip")
-local LeftHip = torso:WaitForChild("Left Hip")
-
--- Store original math bases
-local ROOTC0 = RootJoint.C0
-local NECKC0 = Neck.C0
-local RIGHTSHOULDERC0 = RightShoulder.C0
-local LEFTSHOULDERC0 = LeftShoulder.C0
-local RIGHTHIPC0 = RightHip.C0
-local LEFTHIPC0 = LeftHip.C0
-
--- Custom Animation Engine Utilities
-local function Swait()
-    RunService.Heartbeat:Wait()
-end
-
-local function Clerp(a, b, t)
-    return a:Lerp(b, t)
-end
-
--- Netless Physics Loop (Claims server ownership of your character's limbs)
-task.spawn(function()
-    while runService and char:IsDescendantOf(workspace) do
-        RunService.Heartbeat:Wait()
-        settings().Physics.AllowSleep = false
-        player.MaximumSimulationRadius = math.huge
-        setsimulationradius(math.huge)
-        
-        for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.Velocity = Vector3.new(0, -30, 0) -- Forces network ownership replication
-            end
-        end
-    end
-end)
-
--- Passive Character Stance Loop (Gives you a subtle breathing idle when not animating)
-task.spawn(function()
-    while reanimated and char:IsDescendantOf(workspace) do
-        Swait()
-        if not ATTACK then
-            SINE = SINE + 1
-            -- Subtle breathing movements
-            RootJoint.C0 = Clerp(RootJoint.C0, ROOTC0 * CFrame.new(0, 0, 0.05 * math.cos(SINE / 12)) * CFrame.Angles(0, 0, 0), 0.1)
-            Neck.C0 = Clerp(Neck.C0, NECKC0 * CFrame.Angles(math.rad(2 * math.sin(SINE / 12)), 0, 0), 0.1)
-            RightShoulder.C0 = Clerp(RightShoulder.C0, RIGHTSHOULDERC0 * CFrame.new(0, 0.02 * math.sin(SINE / 12), 0) * CFrame.Angles(0, 0, math.rad(1 * math.sin(SINE / 12))), 0.1)
-            LeftShoulder.C0 = Clerp(LeftShoulder.C0, LEFTSHOULDERC0 * CFrame.new(0, 0.02 * math.sin(SINE / 12), 0) * CFrame.Angles(0, 0, math.rad(-1 * math.sin(SINE / 12))), 0.1)
-            RightHip.C0 = Clerp(RightHip.C0, RIGHTHIPC0 * CFrame.new(0, -0.02 * math.cos(SINE / 12), 0), 0.1)
-            LeftHip.C0 = Clerp(LeftHip.C0, LEFTHIPC0 * CFrame.new(0, -0.02 * math.cos(SINE / 12), 0), 0.1)
-        end
-    end
-end)
-
-
--- =======================================================================
--- PART 2: THE STUDIO UI GRAPHICS INTERFACE
+-- PART 1: THE STUDIO UI GRAPHICS INTERFACE (Forced to load first)
 -- =======================================================================
 local guiParent
 local success, result = pcall(function() return gethui() end)
@@ -286,11 +215,100 @@ end)
 
 
 -- =======================================================================
--- PART 3: TOGGLE HANDLER & FE REPLICATION CONNECTORS
+-- PART 2: THE FE REANIMATION & ANIMATION BACKGROUND ENGINE
 -- =======================================================================
+local reanimated = false
+local ATTACK = false
+local Rooted = false
+local Animation_Speed = 2
+local SINE = 0
 local inspecting = false
 
+-- Global joints setup inside isolated threads to protect UI rendering
+local RootJoint, Neck, RightShoulder, LeftShoulder, RightHip, LeftHip
+local ROOTC0, NECKC0, RIGHTSHOULDERC0, LEFTSHOULDERC0, RIGHTHIPC0, LEFTHIPC0
+
+local function Swait()
+    RunService.Heartbeat:Wait()
+end
+
+local function Clerp(a, b, t)
+    return a:Lerp(b, t)
+end
+
+task.spawn(function()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local torso = char:WaitForChild("Torso", 5)
+    local rootPart = char:WaitForChild("HumanoidRootPart", 5)
+    
+    if not torso or not rootPart then
+        warn("Reanimation Setup Error: R6 Torso parts not loaded.")
+        return
+    end
+
+    RootJoint = rootPart:WaitForChild("Root Joint", 2)
+    Neck = torso:WaitForChild("Neck", 2)
+    RightShoulder = torso:WaitForChild("Right Shoulder", 2)
+    LeftShoulder = torso:WaitForChild("Left Shoulder", 2)
+    RightHip = torso:WaitForChild("Right Hip", 2)
+    LeftHip = torso:WaitForChild("Left Hip", 2)
+
+    if not (RootJoint and Neck and RightShoulder and LeftShoulder and RightHip and LeftHip) then
+        warn("Reanimation Setup Error: Standard motor joints missing.")
+        return
+    end
+
+    -- Store original structural anchors
+    ROOTC0 = RootJoint.C0
+    NECKC0 = Neck.C0
+    RIGHTSHOULDERC0 = RightShoulder.C0
+    LEFTSHOULDERC0 = LeftShoulder.C0
+    RIGHTHIPC0 = RightHip.C0
+    LEFTHIPC0 = LeftHip.C0
+    reanimated = true
+
+    -- Passive Claim Replication (Netless physics sync loop)
+    task.spawn(function()
+        while reanimated and char:IsDescendantOf(workspace) do
+            RunService.Heartbeat:Wait()
+            settings().Physics.AllowSleep = false
+            player.MaximumSimulationRadius = math.huge
+            pcall(function() setsimulationradius(math.huge) end)
+            
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Velocity = Vector3.new(0, -30, 0)
+                end
+            end
+        end
+    end)
+
+    -- Stance Stablizer / Idle breathing engine
+    task.spawn(function()
+        while reanimated and char:IsDescendantOf(workspace) do
+            Swait()
+            if not ATTACK then
+                SINE = SINE + 1
+                RootJoint.C0 = Clerp(RootJoint.C0, ROOTC0 * CFrame.new(0, 0, 0.05 * math.cos(SINE / 12)), 0.1)
+                Neck.C0 = Clerp(Neck.C0, NECKC0 * CFrame.Angles(math.rad(2 * math.sin(SINE / 12)), 0, 0), 0.1)
+                RightShoulder.C0 = Clerp(RightShoulder.C0, RIGHTSHOULDERC0 * CFrame.new(0, 0.02 * math.sin(SINE / 12), 0) * CFrame.Angles(0, 0, math.rad(1 * math.sin(SINE / 12))), 0.1)
+                LeftShoulder.C0 = Clerp(LeftShoulder.C0, LEFTSHOULDERC0 * CFrame.new(0, 0.02 * math.sin(SINE / 12), 0) * CFrame.Angles(0, 0, math.rad(-1 * math.sin(SINE / 12))), 0.1)
+                RightHip.C0 = Clerp(RightHip.C0, RIGHTHIPC0 * CFrame.new(0, -0.02 * math.cos(SINE / 12), 0), 0.1)
+                LeftHip.C0 = Clerp(LeftHip.C0, LEFTHIPC0 * CFrame.new(0, -0.02 * math.cos(SINE / 12), 0), 0.1)
+            end
+        end
+    end)
+end)
+
+-- =======================================================================
+-- PART 3: TOGGLE HANDLER & FE REPLICATION CONNECTORS
+-- =======================================================================
 inspectorBtn.MouseButton1Click:Connect(function()
+    if not reanimated then 
+        warn("Wait for engine to index your character joints before using animations.")
+        return 
+    end
+    
     inspecting = not inspecting
     
     if inspecting then
@@ -298,23 +316,22 @@ inspectorBtn.MouseButton1Click:Connect(function()
         inspectorBtn.TextColor3 = Color3.fromRGB(255, 255, 0)
         inspectorBtn.BorderColor3 = Color3.fromRGB(255, 255, 0)
         
-        -- High frequency thread handles smooth replication and locks arms safely to the joints
         coroutine.resume(coroutine.create(function()
             ATTACK = true
             Rooted = true
             
-            while inspecting and reanimated and char:IsDescendantOf(workspace) do
+            -- Absolute target positioning offsets anchored firmly to the original base coordinates
+            local rightInspectC0 = CFrame.new(-0.2, -0.1, 0.5) * CFrame.Angles(math.rad(-60), 0, math.rad(-30)) * RIGHTSHOULDERC0
+            local leftInspectC0 = CFrame.new(0.2, -0.1, 0.5) * CFrame.Angles(math.rad(-60), 0, math.rad(30)) * LEFTSHOULDERC0
+            
+            while inspecting and reanimated do
                 Swait()
-                -- Precise CFrame offsets interacting with base shoulder anchors to completely avoid detaching
-                RightShoulder.C0 = Clerp(RightShoulder.C0, CFrame.new(-0.2, -0.1, 0.6) * CFrame.Angles(math.rad(-55), 0, math.rad(-35)) * RIGHTSHOULDERC0, 1 / Animation_Speed)
-                LeftShoulder.C0 = Clerp(LeftShoulder.C0, CFrame.new(0.2, -0.1, 0.6) * CFrame.Angles(math.rad(-55), 0, math.rad(35)) * LEFTSHOULDERC0, 1 / Animation_Speed)
-                
-                -- Keep torso stable while in the animation loop
+                RightShoulder.C0 = Clerp(RightShoulder.C0, rightInspectC0, 1 / Animation_Speed)
+                LeftShoulder.C0 = Clerp(LeftShoulder.C0, leftInspectC0, 1 / Animation_Speed)
                 RootJoint.C0 = Clerp(RootJoint.C0, ROOTC0, 1 / Animation_Speed)
                 Neck.C0 = Clerp(Neck.C0, NECKC0, 1 / Animation_Speed)
             end
             
-            -- Turn off flags
             ATTACK = false
             Rooted = false
             inspectorBtn.Text = "Inspector"
