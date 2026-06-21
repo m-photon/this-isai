@@ -144,12 +144,13 @@ layout.Padding = UDim.new(0, 6)
 layout.Parent = content
 
 --- STATE & LOGIC ---
--- Split states into menu selection (_enabled) and execution active (_active)
+-- Statuses can be: "disabled", "armed" (waiting for key), or "active" (running)
 local state = {
-	c_enabled = false, c_active = false,
-	e_enabled = false, e_active = false,
-	t_enabled = false, t_active = false,
-	v_enabled = false, fling = false
+	c = "disabled",
+	e = "disabled",
+	t = "disabled",
+	v = "disabled",
+	fling_running = false
 }
 
 local function createBtn(name, text)
@@ -211,6 +212,11 @@ local eStatus = createStatus("eStatus", "> [E] Player ESP Active", Color3.fromRG
 local tStatus = createStatus("tStatus", "> [T] Tracers Active", Color3.fromRGB(255, 150, 50))
 local vStatus = createStatus("vStatus", "> Flinging Target...", Color3.fromRGB(255, 100, 100))
 
+--- COLOR CONFIG ---
+local COLOR_DISABLED = Color3.fromRGB(25, 25, 25)
+local COLOR_ARMED = Color3.fromRGB(55, 55, 75) -- Blueish slate gray
+local COLOR_ACTIVE = Color3.fromRGB(35, 75, 35) -- Forest Green
+
 --- FUNCTIONS ---
 local function getTarget(hrp)
 	local tgt, dist = nil, math.huge
@@ -249,7 +255,7 @@ espFolder.Name = "nos_dywyll_ESP"
 espFolder.Parent = core
 
 local function updateESP()
-	if not (state.e_enabled and state.e_active) then
+	if state.e ~= "active" then
 		espFolder:ClearAllChildren()
 		return
 	end
@@ -294,7 +300,7 @@ local function updateTracers()
 			end
 			
 			local line = tracers[p]
-			if state.t_enabled and state.t_active and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
+			if state.t == "active" and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
 				local vector, onScreen = cam:WorldToScreenPoint(p.Character.HumanoidRootPart.Position)
 				if onScreen then
 					line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
@@ -318,7 +324,7 @@ plrs.PlayerRemoving:Connect(function(p)
 end)
 
 rs.RenderStepped:Connect(function()
-	if state.e_enabled and state.e_active then
+	if state.e == "active" then
 		updateESP()
 	else
 		espFolder:ClearAllChildren()
@@ -326,43 +332,64 @@ rs.RenderStepped:Connect(function()
 	updateTracers()
 end)
 
---- MENU BUTTON TOGGLES ---
-local function toggleSilentAimMenu()
-	state.c_enabled = not state.c_enabled
-	if not state.c_enabled then
-		state.c_active = false
+--- MENU BUTTON INTERACTIONS (ARMING STAGE) ---
+cBtn.MouseButton1Click:Connect(function()
+	if state.c == "disabled" then
+		state.c = "armed"
+		cBtn.BackgroundColor3 = COLOR_ARMED
+	else
+		state.c = "disabled"
 		cStatus.Visible = false
+		cBtn.BackgroundColor3 = COLOR_DISABLED
 	end
-	cBtn.BackgroundColor3 = state.c_enabled and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-end
+end)
 
-local function toggleESPMenu()
-	state.e_enabled = not state.e_enabled
-	if not state.e_enabled then
-		state.e_active = false
+eBtn.MouseButton1Click:Connect(function()
+	if state.e == "disabled" then
+		state.e = "armed"
+		eBtn.BackgroundColor3 = COLOR_ARMED
+	else
+		state.e = "disabled"
 		eStatus.Visible = false
-		updateESP()
+		espFolder:ClearAllChildren()
+		eBtn.BackgroundColor3 = COLOR_DISABLED
 	end
-	eBtn.BackgroundColor3 = state.e_enabled and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-end
+end)
 
-local function toggleTracersMenu()
-	state.t_enabled = not state.t_enabled
-	if not state.t_enabled then
-		state.t_active = false
+tBtn.MouseButton1Click:Connect(function()
+	if state.t == "disabled" then
+		state.t = "armed"
+		tBtn.BackgroundColor3 = COLOR_ARMED
+	else
+		state.t = "disabled"
 		tStatus.Visible = false
+		tBtn.BackgroundColor3 = COLOR_DISABLED
 	end
-	tBtn.BackgroundColor3 = state.t_enabled and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-end
+end)
 
-local function toggleFlingMenu()
-	state.v_enabled = not state.v_enabled
-	vBtn.BackgroundColor3 = state.v_enabled and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-end
+vBtn.MouseButton1Click:Connect(function()
+	if state.v == "disabled" then
+		state.v = "armed"
+		vBtn.BackgroundColor3 = COLOR_ARMED
+	else
+		state.v = "disabled"
+		vStatus.Visible = false
+		vBtn.BackgroundColor3 = COLOR_DISABLED
+	end
+end)
+
+iBtn.MouseButton1Click:Connect(function()
+	sideOpen = not sideOpen
+	sideMenu.Visible = sideOpen
+	iBtn.BackgroundColor3 = sideOpen and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+	if sideOpen then
+		refreshIntel()
+	end
+end)
 
 --- GHOST FLING EXECUTION ---
 local function ghostFling()
-	if not state.v_enabled or state.fling then return end
+	if state.v ~= "armed" or state.fling_running then return end
 	local char = lp.Character
 	if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChildWhichIsA("Humanoid") then return end
 	local hrp, hum = char.HumanoidRootPart, char:FindFirstChildWhichIsA("Humanoid")
@@ -372,8 +399,9 @@ local function ghostFling()
 	local tp = tgt:FindFirstChild("Torso") or tgt:FindFirstChild("UpperTorso") or tgt:FindFirstChild("HumanoidRootPart")
 	if not tp then return end
 	
-	state.fling = true
+	state.fling_running = true
 	vStatus.Visible = true
+	vBtn.BackgroundColor3 = COLOR_ACTIVE
 	local oldCFrame = hrp.CFrame
 	
 	local bav = Instance.new("BodyAngularVelocity")
@@ -401,8 +429,9 @@ local function ghostFling()
 			if hum and hum.Parent then
 				hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 			end
-			state.fling = false
+			state.fling_running = false
 			vStatus.Visible = false
+			vBtn.BackgroundColor3 = (state.v == "armed") and COLOR_ARMED or COLOR_DISABLED
 			return
 		end
 		
@@ -417,24 +446,10 @@ local function ghostFling()
 	end)
 end
 
-cBtn.MouseButton1Click:Connect(toggleSilentAimMenu)
-eBtn.MouseButton1Click:Connect(toggleESPMenu)
-tBtn.MouseButton1Click:Connect(toggleTracersMenu)
-vBtn.MouseButton1Click:Connect(toggleFlingMenu)
-
-iBtn.MouseButton1Click:Connect(function()
-	sideOpen = not sideOpen
-	sideMenu.Visible = sideOpen
-	iBtn.BackgroundColor3 = sideOpen and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-	if sideOpen then
-		refreshIntel()
-	end
-end)
-
 --- SILENT AIM FUNCTION HOOKS ---
 local oldRaycast
 oldRaycast = hookfunction(workspace.Raycast, newcclosure(function(self, origin, direction, params)
-	if state.c_enabled and state.c_active and not checkcaller() then
+	if state.c == "active" and not checkcaller() then
 		local closest = getClosestToCursor()
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			local targetPos = closest.Character.Head.Position
@@ -447,7 +462,7 @@ end))
 
 local oldFindPartOnRay
 oldFindPartOnRay = hookfunction(workspace.FindPartOnRay, newcclosure(function(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
-	if state.c_enabled and state.c_active and not checkcaller() then
+	if state.c == "active" and not checkcaller() then
 		local closest = getClosestToCursor()
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			local targetPos = closest.Character.Head.Position
@@ -460,7 +475,7 @@ end))
 
 local oldFindPartOnRayWithIgnoreList
 oldFindPartOnRayWithIgnoreList = hookfunction(workspace.FindPartOnRayWithIgnoreList, newcclosure(function(self, ray, ignoreList, terrainCellsAreCubes, fractionMultiplier)
-	if state.c_enabled and state.c_active and not checkcaller() then
+	if state.c == "active" and not checkcaller() then
 		local closest = getClosestToCursor()
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			local targetPos = closest.Character.Head.Position
@@ -473,7 +488,7 @@ end))
 
 local oldIndex
 oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, idx)
-	if state.c_enabled and state.c_active and not checkcaller() and self == mouse then
+	if state.c == "active" and not checkcaller() and self == mouse then
 		local closest = getClosestToCursor()
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			if idx == "Hit" then
@@ -491,45 +506,68 @@ uis.InputBegan:Connect(function(k, p)
 	if p then return end
 	
 	if k.KeyCode == Enum.KeyCode.C then
-		if state.c_enabled then
-			state.c_active = not state.c_active
-			cStatus.Visible = state.c_active
+		if state.c == "armed" then
+			state.c = "active"
+			cStatus.Visible = true
+			cBtn.BackgroundColor3 = COLOR_ACTIVE
+		elseif state.c == "active" then
+			state.c = "armed"
+			cStatus.Visible = false
+			cBtn.BackgroundColor3 = COLOR_ARMED
 		end
+		
 	elseif k.KeyCode == Enum.KeyCode.E then
-		if state.e_enabled then
-			state.e_active = not state.e_active
-			eStatus.Visible = state.e_active
-			if not state.e_active then updateESP() end
+		if state.e == "armed" then
+			state.e = "active"
+			eStatus.Visible = true
+			eBtn.BackgroundColor3 = COLOR_ACTIVE
+		elseif state.e == "active" then
+			state.e = "armed"
+			eStatus.Visible = false
+			espFolder:ClearAllChildren()
+			eBtn.BackgroundColor3 = COLOR_ARMED
 		end
+		
 	elseif k.KeyCode == Enum.KeyCode.T then
-		if state.t_enabled then
-			state.t_active = not state.t_active
-			tStatus.Visible = state.t_active
+		if state.t == "armed" then
+			state.t = "active"
+			tStatus.Visible = true
+			tBtn.BackgroundColor3 = COLOR_ACTIVE
+		elseif state.t == "active" then
+			state.t = "armed"
+			tStatus.Visible = false
+			tBtn.BackgroundColor3 = COLOR_ARMED
 		end
+		
 	elseif k.KeyCode == Enum.KeyCode.V then
-		if state.v_enabled then
+		if state.v == "armed" then
 			ghostFling()
 		end
 	end
 end)
 
---- ABSOLUTE MOUSE DRAG ENGINE ---
+--- FIXED SMOOTH MOUSE DRAG ENGINE ---
 local dragging = false
-local dragStart = Vector2.zero
+local dragStart = Vector3.new()
 local startPos = UDim2.new()
 
 topbar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
-		dragStart = Vector2.new(mouse.X, mouse.Y)
+		dragStart = input.Position
 		startPos = main.Position
 	end
 end)
 
 uis.InputChanged:Connect(function(input)
 	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = Vector2.new(mouse.X, mouse.Y) - dragStart
-		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(
+			startPos.X.Scale, 
+			startPos.X.Offset + delta.X, 
+			startPos.Y.Scale, 
+			startPos.Y.Offset + delta.Y
+		)
 	end
 end)
 
