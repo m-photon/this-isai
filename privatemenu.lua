@@ -49,13 +49,14 @@ local barCorner = Instance.new("UICorner")
 barCorner.CornerRadius = UDim.new(0, 8)
 barCorner.Parent = dragBar
 
--- 4. Custom Two-Line Title Text
+-- 4. Custom Two-Line Title Text (With Yellow RichText Name)
 local titleText = Instance.new("TextLabel")
 titleText.Name = "TitleLabel"
 titleText.Size = UDim2.new(1, -20, 1, 0)
 titleText.Position = UDim2.new(0, 12, 0, 0)
 titleText.BackgroundTransparency = 1
-titleText.Text = "nos_dywll's\nPrivate menu"
+titleText.RichText = true 
+titleText.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextSize = 14
 titleText.Font = Enum.Font.GothamBold
@@ -118,7 +119,7 @@ visorText.Parent = visorMenu
 
 
 ----------------------------------------------------------------
--- VISOR DETACHED PROXY FLING (LEG ANCHORED STABILIZATION)
+-- VISOR PROXY FLING (RED HIGHLIGHT & FIXED CAMERA SYSTEM)
 ----------------------------------------------------------------
 
 local visorActive = false
@@ -168,46 +169,46 @@ local function flingNearestPlayer()
 	
 	flinging = true
 	
-	-- 1. Create the physical 3x3 Neon Block
-	local proxyBlock = Instance.new("Part")
-	proxyBlock.Size = Vector3.new(3, 3, 3)
-	proxyBlock.Color = Color3.fromRGB(0, 255, 255)
-	proxyBlock.Material = Enum.Material.Neon
-	proxyBlock.CanCollide = false
-	proxyBlock.Anchored = true
-	proxyBlock.CFrame = hrp.CFrame
-	proxyBlock.Parent = workspace
+	-- 1. Create and apply the Red Highlight onto the target character
+	local targetHighlight = Instance.new("Highlight")
+	targetHighlight.Name = "VisorTargetHighlight"
+	targetHighlight.FillColor = Color3.fromRGB(255, 0, 0)
+	targetHighlight.OutlineColor = Color3.fromRGB(255, 50, 50)
+	targetHighlight.FillTransparency = 0.35
+	targetHighlight.OutlineTransparency = 0
+	targetHighlight.Parent = targetCharacter
 	
-	-- 2. Save original position to return to later
-	local savedCFrame = hrp.CFrame
+	-- Automatically destroy the red highlight after exactly 0.5 seconds
+	task.delay(0.5, function()
+		if targetHighlight then
+			targetHighlight:Destroy()
+		end
+	end)
 	
-	-- 3. Find and track your Joint motor (Handles R6 & R15 compatibility)
-	local rootJoint = hrp:FindFirstChild("RootJoint")
-	if not rootJoint and char:FindFirstChild("LowerTorso") then
-		rootJoint = char.LowerTorso:FindFirstChild("Root")
+	-- Camera Lock: Fixes camera focus onto your stationary Head
+	local camera = workspace.CurrentCamera
+	local staticPart = char:FindFirstChild("Head") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+	if camera and staticPart then
+		camera.CameraSubject = staticPart
 	end
 	
-	-- 4. Anchor ONLY your feet and legs to the ground to act as an anchor
+	-- 2. Save original reference position data
+	local savedCFrame = hrp.CFrame
+	
+	-- 3. Locate the main root joint dynamically
+	local rootJoint = hrp:FindFirstChild("RootJoint") or char:FindFirstChild("RootJoint", true) or (char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root"))
+	local originalC0 = rootJoint and rootJoint.C0
+	
+	-- 4. Set character collisions off
 	local oldCollisions = {}
-	local anchoredLegs = {}
 	for _, part in pairs(char:GetChildren()) do
 		if part:IsA("BasePart") then
 			oldCollisions[part] = part.CanCollide
-			part.CanCollide = false -- Keeps collisions off so the spinning root doesn't hit yourself
-			
-			-- Targets R6 and R15 leg/foot structures dynamically
-			local partName = part.Name:lower()
-			if partName:find("leg") or partName:find("foot") then
-				anchoredLegs[part] = part.Anchored
-				part.Anchored = true -- Firmly plants legs to the floor
-			end
+			part.CanCollide = false
 		end
 	end
 	
-	-- 5. Disconnect the HumanoidRootPart joint invisibly
-	if rootJoint then rootJoint.Enabled = false end
-	
-	-- 6. Inject the hyper-spin physics engine forces onto the invisible HumanoidRootPart
+	-- 5. Attach hyper-spin velocity parameters onto the hidden RootPart
 	local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
 	bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 	bodyAngularVelocity.P = 1000000000000000000000000000
@@ -223,47 +224,45 @@ local function flingNearestPlayer()
 		local elapsed = tick() - startTime
 		
 		-- Cleanup condition
-		if elapsed > totalDuration or not targetPart or not targetPart.Parent or not char or not hrp then
+		if elapsed > totalDuration or not targetPart or not targetPart.Parent or not char or not hrp or not rootJoint then
 			
-			-- Destroy proxy block and forces
-			proxyBlock:Destroy()
+			-- Destroy forces and target highlight if it still exists
 			bodyAngularVelocity:Destroy()
+			if targetHighlight then targetHighlight:Destroy() end
 			
-			-- Teleport your hidden physics root back and weld your character back together seamlessly
+			-- Snap root completely back and restore normal character matrix configurations
+			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
 			hrp.CFrame = savedCFrame
 			hrp.Velocity = Vector3.new(0, 0, 0)
-			if rootJoint then rootJoint.Enabled = true end
 			
-			-- Release legs from ground anchor and restore collisions
-			for part, wasAnchored in pairs(anchoredLegs) do
-				if part and part.Parent then part.Anchored = wasAnchored end
-			end
 			for part, canCollide in pairs(oldCollisions) do
 				if part and part.Parent then part.CanCollide = canCollide end
 			end
+			
+			if camera and humanoid then camera.CameraSubject = humanoid end
 			
 			connection:Disconnect()
 			flinging = false
 			return
 		end
 		
-		-- Target Position Vector
+		-- Track target positions
 		local destination = targetPart.Position
 		local currentPos
 		
 		if elapsed < travelDuration then
-			-- PHASE 1: Smoothly fly out from your body and travel over to the target player
 			local alpha = elapsed / travelDuration
 			currentPos = savedCFrame.Position:Lerp(destination, alpha)
 		else
-			-- PHASE 2: Lock onto the target aggressively to perform the physics crush fling
 			currentPos = destination + Vector3.new(0, 0.1, 0)
 		end
 		
-		-- Align both the visible 3x3 Block and your invisible spinning root together
-		proxyBlock.CFrame = CFrame.new(currentPos)
-		hrp.CFrame = CFrame.new(currentPos)
+		-- Invisible root hub tracks onto target to perform the physics crush fling
+		hrp.CFrame = CFrame.new(currentPos) * savedCFrame.Rotation
 		hrp.Velocity = Vector3.new(75, 75, 75) 
+		
+		-- Counter-Inverse Matrix: Keeps your visible body parts completely frozen at home base
+		rootJoint.C0 = hrp.CFrame:Inverse() * savedCFrame * originalC0
 	end)
 end
 
