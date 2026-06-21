@@ -7,8 +7,9 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Define the custom Green color theme
-local themeColor = Color3.fromRGB(0, 255, 120)
+-- Define colors
+local themeColor = Color3.fromRGB(0, 255, 120) -- Custom Green
+local grayColor = Color3.fromRGB(100, 100, 100) -- Mid-Gray for diamond
 
 -- Prevent duplicate GUIs if the script runs multiple times
 if playerGui:FindFirstChild("PrivateAnimationsGui") then
@@ -50,12 +51,72 @@ titleLabel.TextColor3 = themeColor
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = mainFrame
 
+-- === CREATE THE CLOSE BUTTON ===
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 30, 0, 25)
+closeButton.Position = UDim2.new(1, -35, 0, 5) -- Positioned in the top right
+closeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+closeButton.BorderSizePixel = 1
+closeButton.BorderColor3 = Color3.fromRGB(255, 50, 50) -- Red border
+closeButton.Text = "X"
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 14
+closeButton.TextColor3 = Color3.fromRGB(255, 50, 50) -- Red text
+closeButton.Parent = mainFrame
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 4)
+closeCorner.Parent = closeButton
+
+-- Close button hover effect
+closeButton.MouseEnter:Connect(function()
+    closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+end)
+closeButton.MouseLeave:Connect(function()
+    closeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    closeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
+end)
+
+-- Close button click logic
+closeButton.MouseButton1Click:Connect(function()
+    mainGui:Destroy()
+end)
+
+-- === CREATE THE SPINNING DIAMOND ===
+-- Created using a standard Frame rotated 45 degrees
+local diamond = Instance.new("Frame")
+diamond.Name = "SpinningDiamond"
+diamond.Size = UDim2.new(0, 120, 0, 120) -- Size of the diamond
+diamond.AnchorPoint = Vector2.new(0.5, 0.5) -- Center the anchor
+diamond.Position = UDim2.new(0.5, 0, 0.5, 0) -- Center on MainFrame
+diamond.BackgroundColor3 = grayColor
+diamond.BorderSizePixel = 0
+diamond.Rotation = 45 -- Base diamond shape
+diamond.ZIndex = 1 -- Keep it behind buttons (buttons have higher priority by default in scrolling frames)
+diamond.Parent = mainFrame
+
+local diamondCorner = Instance.new("UICorner")
+diamondCorner.CornerRadius = UDim.new(0, 10) -- Slightly round the tips
+diamondCorner.Parent = diamond
+
+-- Simple rotation script
+task.spawn(function()
+    while diamond.Parent do -- Loop stops if GUI is closed
+        local dt = task.wait() -- Wait for frame
+        diamond.Rotation = diamond.Rotation + (90 * dt) -- Rotate 90 degrees per second
+    end
+end)
+-- ===============================
+
 -- Create a ScrollingFrame to hold the buttons
 local buttonContainer = Instance.new("ScrollingFrame")
 buttonContainer.Name = "ButtonContainer"
 buttonContainer.Size = UDim2.new(1, -20, 1, -55)
 buttonContainer.Position = UDim2.new(0, 10, 0, 45)
 buttonContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+buttonContainer.BackgroundTransparency = 0.5 -- Allow diamond to be visible
 buttonContainer.BorderSizePixel = 0
 buttonContainer.ScrollBarThickness = 6
 buttonContainer.ScrollBarImageColor3 = themeColor
@@ -82,102 +143,3 @@ local function createStyledButton(name, text, parent)
     btn.Name = name
     btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     btn.BorderSizePixel = 1
-    btn.BorderColor3 = themeColor
-    btn.Text = text
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 14
-    btn.TextColor3 = themeColor
-    btn.Parent = parent
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 4)
-    btnCorner.Parent = btn
-    
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    end)
-    return btn
-end
-
--- === CREATE THE INSPECTOR BUTTON ===
-local inspectorBtn = createStyledButton("InspectorButton", "Inspector", buttonContainer)
-
--- Generate remaining blank buttons
-for i = 1, 14 do
-    createStyledButton("BlankButton" .. i, "", buttonContainer)
-end
-
--- Update CanvasSize based on the number of buttons
-gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    buttonContainer.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 20)
-end)
-
--- Make the GUI Draggable
-local dragging, dragInput, dragStart, startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-
-titleLabel.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-titleLabel.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
-    end
-end)
-
--- === ANIMATION INTEGRATION LOGIC ===
-
--- This is where you connect the GUI to the script you provided.
-inspectorBtn.MouseButton1Click:Connect(function()
-    print("Inspector button clicked!")
-    
-    -- NOTE: To make this actually play the animation from your script, 
-    -- you must integrate this GUI script INSIDE your ServerAdmin() function.
-    -- Specifically, it needs access to these variables from your script:
-    -- RootJoint, Neck, RightShoulder, LeftShoulder, RightHip, LeftHip, ATTACK, Rooted
-    
-    -- Example of how it hooks up (assuming this block is pasted inside your ServerAdmin scope):
-    --[[
-    if reanimated == true and ATTACK == false then
-        coroutine.resume(coroutine.create(function()
-            ATTACK = true
-            Rooted = true
-            
-            -- Your animation sequence here (Example: first few frames of IntroThing)
-            for i=0, 0.4, 0.1 / Animation_Speed do
-                Swait()
-                RootJoint.C0 = Clerp(RootJoint.C0,ROOTC0 * CFrame.new(0, -0.31, -0.65 + 0.05 * math.cos(SINE / 12)) * CFrame.Angles(math.rad(60), 0, 0), 1 / Animation_Speed)
-                Neck.C0 = Clerp(Neck.C0, NECKC0 * CFrame.Angles(math.rad(0 - 2.5 * math.sin(SINE / 12)), 0, 0), 1 / Animation_Speed)
-                RightShoulder.C0 = Clerp(RightShoulder.C0, CFrame.new(1.35, 0.5, -1.4) * CFrame.Angles(math.rad(65), 0, math.rad(-15)) * RIGHTSHOULDERC0, 1 / Animation_Speed)
-                LeftShoulder.C0 = Clerp(LeftShoulder.C0, CFrame.new(-1.5, 0.5, 0) * CFrame.Angles(0, math.rad(5), math.rad(-35)) * LEFTSHOULDERC0, 1 / Animation_Speed)
-            end
-            
-            ATTACK = false
-            Rooted = false
-        end))
-    end
-    ]]
-end)
