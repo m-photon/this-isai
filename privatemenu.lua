@@ -136,11 +136,22 @@ magnetText.TextSize = 20
 magnetText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
 magnetText.Parent = magnetMenu
 
-
 --- STATE VARIABLES ---
 local visorActive = false
 local flinging = false
 local magnetActive = false
+
+--- NETWORK OWNERSHIP BYPASS (From the provided script) ---
+RunService.Heartbeat:Connect(function()
+	if magnetActive or flinging then
+		pcall(function()
+			settings().Physics.AllowSleep = false
+			if sethiddenproperty then
+				sethiddenproperty(localPlayer, "SimulationRadius", math.huge)
+			end
+		end)
+	end
+end)
 
 --- BUTTON CLICKS ---
 visorButton.MouseButton1Click:Connect(function()
@@ -173,7 +184,6 @@ local function getClosestPlayer(hrp)
 	return target
 end
 
--- Reverted to the stable original Ghost Fling
 local function ghostFling()
 	if flinging then return end
 	
@@ -254,6 +264,17 @@ local function magnetItems()
 			if parentModel and parentModel:FindFirstChildWhichIsA("Humanoid") then
 				continue
 			end
+			
+			-- Rip away any forces holding the item back (from the provided script)
+			for _, force in pairs(obj:GetChildren()) do
+				if force:IsA("BodyMover") or force:IsA("Constraint") or force:IsA("AlignPosition") or force:IsA("Torque") then
+					force:Destroy()
+				end
+			end
+			
+			-- Make it weightless and frictionless so the server doesn't fight it
+			obj.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+			obj.CanCollide = false
 			
 			local randomOffset = Vector3.new(math.random(-4, 4), math.random(1, 6), math.random(-4, 4))
 			obj.CFrame = CFrame.new(targetPos + randomOffset)
