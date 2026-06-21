@@ -216,44 +216,45 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- === ANIMATION INTEGRATION LOGIC ===
-inspectorBtn.MouseButton1Click:Connect(function()
-    local char = player.Character
-    if not char then return end
-    
-    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-    if not torso then return end
+local inspecting = false
+local loopConnection = nil
 
-    -- Locate shoulder joints automatically based on R6 / R15 avatar type
-    local rShoulder = torso:FindFirstChild("Right Shoulder") or char:FindFirstChild("RightShoulder") or (char:FindFirstChild("RightUpperArm") and char.RightUpperArm:FindFirstChild("RightShoulder"))
-    local lShoulder = torso:FindFirstChild("Left Shoulder") or char:FindFirstChild("LeftShoulder") or (char:FindFirstChild("LeftUpperArm") and char.LeftUpperArm:FindFirstChild("LeftShoulder"))
+-- Standard fallback bases if reanimation constants aren't global
+local rBase = RIGHTSHOULDERC0 or CFrame.new(1, 0.5, 0) * CFrame.Angles(0, math.rad(90), 0)
+local lBase = LEFTSHOULDERC0 or CFrame.new(-1, 0.5, 0) * CFrame.Angles(0, math.rad(-90), 0)
+
+inspectorBtn.MouseButton1Click:Connect(function()
+    inspecting = not inspecting
     
-    if rShoulder and lShoulder then
-        -- Direct assignment loop bypassing main script globals entirely
-        task.spawn(function()
-            -- Force flag updates locally if they exist in scope
-            if ATTACK ~= nil then ATTACK = true end
-            if Rooted ~= nil then Rooted = true end
+    if inspecting then
+        inspectorBtn.Text = "Inspecting..."
+        inspectorBtn.TextColor3 = Color3.fromRGB(255, 255, 0)
+        inspectorBtn.BorderColor3 = Color3.fromRGB(255, 255, 0)
+        
+        -- High priority frame loop forces the joints to hold position against main scripts
+        loopConnection = RunService.Heartbeat:Connect(function()
+            local char = player.Character
+            if not char then return end
             
-            -- Smooth transition loop
-            for step = 1, 20 do
-                if Clerp then
-                    -- If the main script's Clerp is available, utilize it smoothly
-                    rShoulder.C0 = Clerp(rShoulder.C0, CFrame.new(1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(-30)), 0.3)
-                    lShoulder.C0 = Clerp(lShoulder.C0, CFrame.new(-1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(30)), 0.3)
-                else
-                    -- Direct Lerp fallback if executed independently
-                    rShoulder.C0 = rShoulder.C0:Lerp(CFrame.new(1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(-30)), 0.3)
-                    lShoulder.C0 = lShoulder.C0:Lerp(CFrame.new(-1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(30)), 0.3)
+            -- Automatically searches entire model for joints to support reanimations/fake limbs
+            for _, joint in pairs(char:GetDescendants()) do
+                if joint:IsA("Motor6D") or joint:IsA("Weld") then
+                    if joint.Name == "Right Shoulder" or joint.Name == "RightShoulder" then
+                        joint.C0 = joint.C0:Lerp(CFrame.new(1.0, -0.1, 0.5) * CFrame.Angles(math.rad(-45), 0, math.rad(-30)) * rBase, 0.3)
+                    elseif joint.Name == "Left Shoulder" or joint.Name == "LeftShoulder" then
+                        joint.C0 = joint.C0:Lerp(CFrame.new(-1.0, -0.1, 0.5) * CFrame.Angles(math.rad(-45), 0, math.rad(30)) * lBase, 0.3)
+                    end
                 end
-                if Swait then Swait() else task.wait(0.03) end
-            end
-            
-            -- Lock position directly to prevent internal animations from resetting the arms immediately
-            while true do
-                rShoulder.C0 = CFrame.new(1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(-30))
-                lShoulder.C0 = CFrame.new(-1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(30))
-                task.wait()
             end
         end)
+    else
+        inspectorBtn.Text = "Inspector"
+        inspectorBtn.TextColor3 = themeColor
+        inspectorBtn.BorderColor3 = themeColor
+        
+        if loopConnection then
+            loopConnection:Disconnect()
+            loopConnection = nil
+        end
     end
 end)
