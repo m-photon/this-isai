@@ -136,14 +136,73 @@ magnetText.TextSize = 20
 magnetText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
 magnetText.Parent = magnetMenu
 
+--- CHAIR OVERLOAD SETUP ---
+local chairButton = Instance.new("TextButton")
+chairButton.Name = "ChairButton"
+chairButton.Size = UDim2.new(1, 0, 0, 38)
+chairButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+chairButton.BorderSizePixel = 0
+chairButton.Text = "Chair Overload"
+chairButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+chairButton.TextSize = 22
+chairButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+chairButton.ZIndex = 2
+chairButton.Parent = contentFrame
+
+local chairMenu = Instance.new("Frame")
+chairMenu.Name = "ChairMenu"
+chairMenu.Size = UDim2.new(0, 140, 0, 35)
+chairMenu.Position = UDim2.new(0, 25, 1, -140)
+chairMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+chairMenu.BorderSizePixel = 0
+chairMenu.Visible = false
+chairMenu.Parent = screenGui
+
+local chairText = Instance.new("TextLabel")
+chairText.Name = "ChairText"
+chairText.Size = UDim2.new(1, 0, 1, 0)
+chairText.BackgroundTransparency = 1
+chairText.Text = "G=Chair Nearest"
+chairText.TextColor3 = Color3.fromRGB(150, 255, 75)
+chairText.TextSize = 20
+chairText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
+chairText.Parent = chairMenu
+
+-- Top Left Tracker Box
+local chairTracker = Instance.new("Frame")
+chairTracker.Name = "ChairTracker"
+chairTracker.Size = UDim2.new(0, 160, 0, 40)
+chairTracker.Position = UDim2.new(0, 20, 0, 20)
+chairTracker.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+chairTracker.BorderSizePixel = 0
+chairTracker.Visible = false
+chairTracker.Parent = screenGui
+
+local chairTrackerCorner = Instance.new("UICorner")
+chairTrackerCorner.CornerRadius = UDim.new(0, 6)
+chairTrackerCorner.Parent = chairTracker
+
+local chairTrackerText = Instance.new("TextLabel")
+chairTrackerText.Name = "ChairTrackerText"
+chairTrackerText.Size = UDim2.new(1, 0, 1, 0)
+chairTrackerText.BackgroundTransparency = 1
+chairTrackerText.Text = "Chairs found: 0"
+chairTrackerText.TextColor3 = Color3.fromRGB(255, 215, 0)
+chairTrackerText.TextSize = 18
+chairTrackerText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+chairTrackerText.Parent = chairTracker
+
+
 --- STATE VARIABLES ---
 local visorActive = false
 local flinging = false
 local magnetActive = false
+local chairActive = false
+local foundChairs = {}
 
---- NETWORK OWNERSHIP BYPASS (From the provided script) ---
+--- NETWORK OWNERSHIP BYPASS ---
 RunService.Heartbeat:Connect(function()
-	if magnetActive or flinging then
+	if magnetActive or flinging or chairActive then
 		pcall(function()
 			settings().Physics.AllowSleep = false
 			if sethiddenproperty then
@@ -153,20 +212,7 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
---- BUTTON CLICKS ---
-visorButton.MouseButton1Click:Connect(function()
-	visorActive = not visorActive
-	visorMenu.Visible = visorActive
-	visorButton.BackgroundColor3 = visorActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
-end)
-
-magnetButton.MouseButton1Click:Connect(function()
-	magnetActive = not magnetActive
-	magnetMenu.Visible = magnetActive
-	magnetButton.BackgroundColor3 = magnetActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
-end)
-
---- FUNCTIONS ---
+--- SHARED FUNCTIONS ---
 local function getClosestPlayer(hrp)
 	local target, shortDist = nil, math.huge
 	for _, p in pairs(Players:GetPlayers()) do
@@ -184,6 +230,80 @@ local function getClosestPlayer(hrp)
 	return target
 end
 
+--- CHAIR FUNCTIONS ---
+local function scanForChairs()
+	foundChairs = {}
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
+			table.insert(foundChairs, obj)
+		end
+	end
+	chairTrackerText.Text = "Chairs found: " .. #foundChairs
+end
+
+local function spawnChairAtClosest()
+	if #foundChairs == 0 then return end
+	
+	local char = localPlayer.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	local targetChar = getClosestPlayer(hrp)
+	if not targetChar then return end
+	
+	local targetPart = targetChar:FindFirstChild("HumanoidRootPart") or targetChar:FindFirstChild("Torso") or targetChar:FindFirstChild("UpperTorso")
+	if not targetPart then return end
+	
+	local chair = table.remove(foundChairs)
+	
+	if chair and chair.Parent then
+		for _, force in pairs(chair:GetChildren()) do
+			if force:IsA("BodyMover") or force:IsA("Constraint") or force:IsA("AlignPosition") or force:IsA("Torque") then
+				force:Destroy()
+			end
+		end
+		
+		chair.Anchored = false
+		chair.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+		chair.CanCollide = false
+		
+		-- Teleport directly onto the nearest player's torso
+		chair.CFrame = targetPart.CFrame
+		chair.AssemblyLinearVelocity = Vector3.zero
+		chair.AssemblyAngularVelocity = Vector3.zero
+		
+		chairTrackerText.Text = "Chairs found: " .. #foundChairs
+	else
+		-- If the chair no longer exists, instantly try the next one in the list
+		spawnChairAtClosest()
+	end
+end
+
+--- BUTTON CLICKS ---
+visorButton.MouseButton1Click:Connect(function()
+	visorActive = not visorActive
+	visorMenu.Visible = visorActive
+	visorButton.BackgroundColor3 = visorActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
+end)
+
+magnetButton.MouseButton1Click:Connect(function()
+	magnetActive = not magnetActive
+	magnetMenu.Visible = magnetActive
+	magnetButton.BackgroundColor3 = magnetActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
+end)
+
+chairButton.MouseButton1Click:Connect(function()
+	chairActive = not chairActive
+	chairMenu.Visible = chairActive
+	chairTracker.Visible = chairActive
+	chairButton.BackgroundColor3 = chairActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
+	
+	if chairActive then
+		scanForChairs()
+	end
+end)
+
+--- FLING / MAGNET FUNCTIONS ---
 local function ghostFling()
 	if flinging then return end
 	
@@ -265,14 +385,12 @@ local function magnetItems()
 				continue
 			end
 			
-			-- Rip away any forces holding the item back (from the provided script)
 			for _, force in pairs(obj:GetChildren()) do
 				if force:IsA("BodyMover") or force:IsA("Constraint") or force:IsA("AlignPosition") or force:IsA("Torque") then
 					force:Destroy()
 				end
 			end
 			
-			-- Make it weightless and frictionless so the server doesn't fight it
 			obj.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
 			obj.CanCollide = false
 			
@@ -293,6 +411,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		ghostFling()
 	elseif magnetActive and input.KeyCode == Enum.KeyCode.T then
 		magnetItems()
+	elseif chairActive and input.KeyCode == Enum.KeyCode.G then
+		spawnChairAtClosest()
 	end
 end)
 
