@@ -128,7 +128,7 @@ local function refreshIntel()
 	end
 end
 
---- BUTTONS ---
+--- MAIN LIST BUTTONS ---
 local content = Instance.new("Frame")
 content.Size = UDim2.new(1, -20, 1, -55)
 content.Position = UDim2.new(0, 10, 0, 50)
@@ -140,11 +140,14 @@ local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 6)
 layout.Parent = content
 
+--- STATE & LOGIC (EVERYTHING OFF BY DEFAULT) ---
+local state = { v = false, fling = false, t = false }
+
 local function createBtn(name, text)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
 	btn.Size = UDim2.new(1, 0, 0, 36)
-	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Off by default
 	btn.BorderSizePixel = 0
 	btn.Text = text
 	btn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -187,7 +190,7 @@ local function createStatus(name, text, color)
 	lbl.Font = Enum.Font.Code
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.TextStrokeTransparency = 0.2
-	lbl.Visible = false
+	lbl.Visible = false -- Off by default
 	lbl.Parent = hud
 	return lbl
 end
@@ -195,18 +198,7 @@ end
 local vStatus = createStatus("vStatus", "> [V] Fling Ready", Color3.fromRGB(255, 100, 100))
 local tStatus = createStatus("tStatus", "> [T] Magnet Ready", Color3.fromRGB(100, 200, 255))
 
---- STATE & LOGIC ---
-local state = { v = false, fling = false, t = false }
-
-rs.Heartbeat:Connect(function()
-	if state.t or state.fling then
-		pcall(function()
-			settings().Physics.AllowSleep = false
-			if sethiddenproperty then sethiddenproperty(lp, "SimulationRadius", math.huge) end
-		end)
-	end
-end)
-
+--- FUNCTIONS ---
 local function getTarget(hrp)
 	local tgt, dist = nil, math.huge
 	for _, p in pairs(plrs:GetPlayers()) do
@@ -218,6 +210,7 @@ local function getTarget(hrp)
 	return tgt
 end
 
+--- BUTTON CLICKS ---
 vBtn.MouseButton1Click:Connect(function()
 	state.v = not state.v
 	vStatus.Visible = state.v
@@ -239,6 +232,7 @@ iBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
+--- GHOST FLING ---
 local function ghostFling()
 	if state.fling then return end
 	local char = lp.Character
@@ -283,35 +277,23 @@ local function ghostFling()
 	end)
 end
 
+--- THE ORIGINAL STABLE MAGNET ---
 local function doMagnet()
-	local pos = mouse.Hit.Position
-	if not pos then return end
+	local targetPos = mouse.Hit.Position
+	if not targetPos then return end
 	
-	local targetHeight = pos + Vector3.new(0, 4, 0)
-	
-	for _, o in pairs(workspace:GetDescendants()) do
-		if o:IsA("BasePart") and not o.Anchored then
-			
-			-- Safer check that works on all executors
-			local isCharacter = false
-			local md = o:FindFirstAncestorOfClass("Model")
-			if md and md:FindFirstChildWhichIsA("Humanoid") then isCharacter = true end
-			if o:FindFirstAncestorWhichIsA("Accessory") or o:FindFirstAncestorWhichIsA("Tool") then isCharacter = true end
-			
-			if not isCharacter then
-				for _, f in pairs(o:GetChildren()) do
-					if f:IsA("BodyMover") or f:IsA("Constraint") or f:IsA("AlignPosition") or f:IsA("Torque") then f:Destroy() end
-				end
-				
-				o.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
-				o.CanCollide = false
-				
-				o.CFrame = CFrame.new(targetHeight + Vector3.new(math.random(-2,2), math.random(-1,2), math.random(-2,2)))
-				
-				-- The magic velocity trick to maintain network ownership and prevent sleeping
-				o.AssemblyLinearVelocity = Vector3.new(14.4626, 14.4626, 14.4626)
-				o.AssemblyAngularVelocity = Vector3.new(14.4626, 14.4626, 14.4626)
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") and not obj.Anchored then
+			local parentModel = obj:FindFirstAncestorOfClass("Model")
+			if parentModel and parentModel:FindFirstChildWhichIsA("Humanoid") then
+				continue
 			end
+			
+			local randomOffset = Vector3.new(math.random(-4, 4), math.random(1, 6), math.random(-4, 4))
+			obj.CFrame = CFrame.new(targetPos + randomOffset)
+			
+			obj.AssemblyLinearVelocity = Vector3.zero
+			obj.AssemblyAngularVelocity = Vector3.zero
 		end
 	end
 end
