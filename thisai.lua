@@ -118,7 +118,7 @@ visorText.Parent = visorMenu
 
 
 ----------------------------------------------------------------
--- VISOR DETACHED 3X3 PROXY BLOCK FLING SYSTEM
+-- VISOR DETACHED PROXY FLING (LEG ANCHORED STABILIZATION)
 ----------------------------------------------------------------
 
 local visorActive = false
@@ -168,13 +168,13 @@ local function flingNearestPlayer()
 	
 	flinging = true
 	
-	-- 1. Create the physical 3x3 Neon Block right where you are standing
+	-- 1. Create the physical 3x3 Neon Block
 	local proxyBlock = Instance.new("Part")
 	proxyBlock.Size = Vector3.new(3, 3, 3)
-	proxyBlock.Color = Color3.fromRGB(0, 255, 255) -- Cyan box color from your script
+	proxyBlock.Color = Color3.fromRGB(0, 255, 255)
 	proxyBlock.Material = Enum.Material.Neon
 	proxyBlock.CanCollide = false
-	proxyBlock.Anchored = true -- Handled via scripting positions to look perfectly smooth
+	proxyBlock.Anchored = true
 	proxyBlock.CFrame = hrp.CFrame
 	proxyBlock.Parent = workspace
 	
@@ -187,16 +187,19 @@ local function flingNearestPlayer()
 		rootJoint = char.LowerTorso:FindFirstChild("Root")
 	end
 	
-	-- 4. Temporarily anchor your visible body parts so your body stays completely behind
+	-- 4. Anchor ONLY your feet and legs to the ground to act as an anchor
 	local oldCollisions = {}
-	local anchoredParts = {}
+	local anchoredLegs = {}
 	for _, part in pairs(char:GetChildren()) do
 		if part:IsA("BasePart") then
 			oldCollisions[part] = part.CanCollide
-			part.CanCollide = false
-			if part ~= hrp then
-				anchoredParts[part] = part.Anchored
-				part.Anchored = true
+			part.CanCollide = false -- Keeps collisions off so the spinning root doesn't hit yourself
+			
+			-- Targets R6 and R15 leg/foot structures dynamically
+			local partName = part.Name:lower()
+			if partName:find("leg") or partName:find("foot") then
+				anchoredLegs[part] = part.Anchored
+				part.Anchored = true -- Firmly plants legs to the floor
 			end
 		end
 	end
@@ -204,7 +207,7 @@ local function flingNearestPlayer()
 	-- 5. Disconnect the HumanoidRootPart joint invisibly
 	if rootJoint then rootJoint.Enabled = false end
 	
-	-- 6. Inject your script's exact hyper-spin velocity configurations onto your invisible HumanoidRootPart
+	-- 6. Inject the hyper-spin physics engine forces onto the invisible HumanoidRootPart
 	local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
 	bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 	bodyAngularVelocity.P = 1000000000000000000000000000
@@ -212,8 +215,8 @@ local function flingNearestPlayer()
 	bodyAngularVelocity.Parent = hrp
 	
 	local startTime = tick()
-	local travelDuration = 0.3 -- Time it takes for the 3x3 block to travel over to the target player
-	local totalDuration = 1.6  -- Total loop duration (travel time + smash time)
+	local travelDuration = 0.3 
+	local totalDuration = 1.6  
 	
 	local connection
 	connection = RunService.Heartbeat:Connect(function()
@@ -231,8 +234,8 @@ local function flingNearestPlayer()
 			hrp.Velocity = Vector3.new(0, 0, 0)
 			if rootJoint then rootJoint.Enabled = true end
 			
-			-- Restore normal character structures
-			for part, wasAnchored in pairs(anchoredParts) do
+			-- Release legs from ground anchor and restore collisions
+			for part, wasAnchored in pairs(anchoredLegs) do
 				if part and part.Parent then part.Anchored = wasAnchored end
 			end
 			for part, canCollide in pairs(oldCollisions) do
@@ -260,7 +263,7 @@ local function flingNearestPlayer()
 		-- Align both the visible 3x3 Block and your invisible spinning root together
 		proxyBlock.CFrame = CFrame.new(currentPos)
 		hrp.CFrame = CFrame.new(currentPos)
-		hrp.Velocity = Vector3.new(75, 75, 75) -- Glitches physics weights to force the fling
+		hrp.Velocity = Vector3.new(75, 75, 75) 
 	end)
 end
 
