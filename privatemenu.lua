@@ -43,7 +43,7 @@ topbar.Size = UDim2.new(1, 0, 0, 45)
 topbar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 topbar.BorderSizePixel = 0
 topbar.ZIndex = 2
-topbar.Active = true -- Required for interaction
+topbar.Active = true 
 topbar.Parent = main
 
 local title = Instance.new("TextLabel")
@@ -246,21 +246,27 @@ local function updateESP()
 		return
 	end
 	
+	for _, child in pairs(espFolder:GetChildren()) do
+		local p = plrs:FindFirstChild(child.Name)
+		if not p or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") then
+			child:Destroy()
+		end
+	end
+	
 	for _, p in pairs(plrs:GetPlayers()) do
 		if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-			if not espFolder:FindFirstChild(p.Name) then
-				local hl = Instance.new("Highlight")
+			local hl = espFolder:FindFirstChild(p.Name)
+			if not hl then
+				hl = Instance.new("Highlight")
 				hl.Name = p.Name
-				hl.Adornee = p.Character
 				hl.FillColor = Color3.fromRGB(255, 50, 50)
 				hl.OutlineColor = Color3.fromRGB(255, 255, 255)
 				hl.FillTransparency = 0.6
 				hl.OutlineTransparency = 0.2
 				hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 				hl.Parent = espFolder
-			else
-				espFolder[p.Name].Adornee = p.Character
 			end
+			hl.Adornee = p.Character
 		end
 	end
 end
@@ -311,24 +317,28 @@ rs.RenderStepped:Connect(function()
 end)
 
 --- BUTTON CLICKS ---
-cBtn.MouseButton1Click:Connect(function()
+local function toggleSilentAim()
 	state.c = not state.c
 	cStatus.Visible = state.c
 	cBtn.BackgroundColor3 = state.c and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-end)
+end
 
-eBtn.MouseButton1Click:Connect(function()
+local function toggleESP()
 	state.e = not state.e
 	eStatus.Visible = state.e
 	eBtn.BackgroundColor3 = state.e and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 	if not state.e then updateESP() end
-end)
+end
 
-tBtn.MouseButton1Click:Connect(function()
+local function toggleTracers()
 	state.t = not state.t
 	tStatus.Visible = state.t
 	tBtn.BackgroundColor3 = state.t and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-end)
+end
+
+cBtn.MouseButton1Click:Connect(toggleSilentAim)
+eBtn.MouseButton1Click:Connect(toggleESP)
+tBtn.MouseButton1Click:Connect(toggleTracers)
 
 vBtn.MouseButton1Click:Connect(function()
 	state.v = not state.v
@@ -371,7 +381,6 @@ local function ghostFling()
 	
 	local start = tick()
 	
-	-- We use Heartbeat because it syncs better with physics calculation
 	local conn; conn = rs.Heartbeat:Connect(function()
 		if tick() - start > 0.8 or not tp or not tp.Parent or not char or not hrp then
 			conn:Disconnect()
@@ -384,18 +393,17 @@ local function ghostFling()
 			return
 		end
 		
-		-- Random micro-offsets to trigger fresh collision calculations repeatedly
 		local ox = math.random(-1, 1) * 0.1
 		local oy = math.random(-1, 1) * 0.1
 		local oz = math.random(-1, 1) * 0.1
 		
 		hrp.CFrame = tp.CFrame * CFrame.new(ox, oy, oz)
-		hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		hrp.AssemblyLinearVelocity = Vector3.new(10000, 10000, 10000)
 		hrp.AssemblyAngularVelocity = Vector3.new(100000, 100000, 100000)
 	end)
 end
 
---- SILENT AIM HOOK ---
+--- SILENT AIM HOOKS ---
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 	local method = getnamecallmethod()
@@ -414,6 +422,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 				args[1] = Ray.new(origin, direction)
 			end
 			
+			setnamecallmethod(method)
 			return oldNamecall(self, unpack(args))
 		end
 	end
@@ -421,23 +430,31 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 	return oldNamecall(self, ...)
 end))
 
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, idx)
+	if state.c and not checkcaller() and self == mouse then
+		local closest = getClosestToCursor()
+		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+			if idx == "Hit" then
+				return closest.Character.Head.CFrame
+			elseif idx == "Target" then
+				return closest.Character.Head
+			end
+		end
+	end
+	return oldIndex(self, idx)
+end))
+
 uis.InputBegan:Connect(function(k, p)
 	if p then return end
 	if k.KeyCode == Enum.KeyCode.V and state.v then
 		ghostFling()
 	elseif k.KeyCode == Enum.KeyCode.C then
-		state.c = not state.c
-		cStatus.Visible = state.c
-		cBtn.BackgroundColor3 = state.c and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+		toggleSilentAim()
 	elseif k.KeyCode == Enum.KeyCode.E then
-		state.e = not state.e
-		eStatus.Visible = state.e
-		eBtn.BackgroundColor3 = state.e and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-		if not state.e then updateESP() end
+		toggleESP()
 	elseif k.KeyCode == Enum.KeyCode.T then
-		state.t = not state.t
-		tStatus.Visible = state.t
-		tBtn.BackgroundColor3 = state.t and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+		toggleTracers()
 	end
 end)
 
