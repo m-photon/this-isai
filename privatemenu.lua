@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local localPlayer = Players.LocalPlayer
+local mouse = localPlayer:GetMouse()
 local targetParent = pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or localPlayer:WaitForChild("PlayerGui")
 
 local oldGui = targetParent:FindFirstChild("nos_dywll_PrivateMenu")
@@ -37,7 +38,6 @@ titleText.RichText = true
 titleText.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextSize = 22
--- Extracted directly from your script assets to fix the text presentation
 titleText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Italic)
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.TextYAlignment = Enum.TextYAlignment.Center
@@ -61,7 +61,7 @@ visorButton.Name = "VisorButton"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
 visorButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 visorButton.BorderSizePixel = 0
-visorButton.Text = "Visor"
+visorButton.Text = "Inspector (Global)"
 visorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 visorButton.TextSize = 22
 visorButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
@@ -80,109 +80,123 @@ local visorText = Instance.new("TextLabel")
 visorText.Name = "VisorText"
 visorText.Size = UDim2.new(1, 0, 1, 0)
 visorText.BackgroundTransparency = 1
-visorText.Text = "V=kill nearby"
-visorText.TextColor3 = Color3.fromRGB(255, 75, 75)
-visorText.TextSize = 20
+visorText.Text = "V=pickup/letgo"
+visorText.TextColor3 = Color3.fromRGB(75, 255, 255)
+visorText.TextSize = 18
 visorText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
 visorText.Parent = visorMenu
 
+-- Core Variables
 local visorActive = false
-local flinging = false
+local isHolding = false
+local targetPart = nil
+local physicsConnection = nil
+local HOLD_DISTANCE = 15
+
+-- [CRITICAL FE BYPASS]: Claims network ownership of distant map objects via executor properties
+task.spawn(function()
+	while task.wait() do
+		pcall(function()
+			settings().Physics.AllowSleep = false
+			if sethiddenproperty then
+				sethiddenproperty(localPlayer, "SimulationRadius", 9e9)
+				sethiddenproperty(localPlayer, "MaxSimulationRadius", 9e9)
+			end
+		end)
+	end
+end)
+
+local function dropObject()
+	isHolding = false
+	if physicsConnection then
+		physicsConnection:Disconnect()
+		physicsConnection = nil
+	end
+	
+	if targetPart then
+		pcall(function()
+			targetPart.CanCollide = true
+			targetPart.AssemblyLinearVelocity = Vector3.zero
+			targetPart.AssemblyAngularVelocity = Vector3.zero
+		end)
+		targetPart = nil
+	end
+end
+
+local function updateObjectPosition()
+	if not targetPart or targetPart.Anchored or not targetPart:IsDescendantOf(workspace) then 
+		dropObject()
+		return 
+	end
+	
+	local targetPosition = mouse.Hit.Position
+	
+	if mouse.Target == nil then
+		local camera = workspace.CurrentCamera
+		targetPosition = camera.CFrame.Position + (mouse.UnitRay.Direction * HOLD_DISTANCE)
+	end
+	
+	-- Velocity + Position hybrid to force FE replication instantly
+	local currentPos = targetPart.Position
+	local direction = targetPosition - currentPos
+	
+	targetPart.AssemblyLinearVelocity = direction * 25
+	targetPart.AssemblyAngularVelocity = Vector3.zero
+end
+
+local function pickupObject(part)
+	isHolding = true
+	targetPart = part
+	targetPart.CanCollide = false
+	
+	physicsConnection = RunService.RenderStepped:Connect(updateObjectPosition)
+end
+
+-- [GLOBAL MAP SCANNER]: Constantly searches the entire workspace for unanchored parts closest to your mouse
+local function getClosestUnanchoredPart()
+	local closestPart = nil
+	local shortestDistance = math.huge
+	local mousePos = mouse.Hit.Position
+	
+	for _, part in ipairs(workspace:GetDescendants()) do
+		if part:IsA("BasePart") and not part.Anchored and not part:IsDescendantOf(localPlayer.Character) then
+			-- Calculate how close this map object is to your mouse cursor position
+			local distance = (part.Position - mousePos).Magnitude
+			if distance < shortestDistance then
+				shortestDistance = distance
+				closestPart = part
+			end
+		end
+	end
+	return closestPart
+end
 
 visorButton.MouseButton1Click:Connect(function()
 	visorActive = not visorActive
 	visorMenu.Visible = visorActive
 	visorButton.BackgroundColor3 = visorActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
-end)
-
-local function getClosestPlayer(hrp)
-	local target, shortDist = nil, math.huge
-	for _, p in pairs(Players:GetPlayers()) do
-		if p ~= localPlayer and p.Character then
-			local tHrp = p.Character:FindFirstChild("HumanoidRootPart")
-			if tHrp then
-				local dist = (hrp.Position - tHrp.Position).Magnitude
-				if dist < shortDist then
-					shortDist = dist
-					target = p.Character
-				end
-			end
-		end
+	
+	if not visorActive and isHolding then
+		dropObject()
 	end
-	return target
-end
-
-local function fling()
-	if flinging then return end
-	
-	local char = localPlayer.Character
-	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
-	if not hrp or not humanoid then return end
-	
-	local targetChar = getClosestPlayer(hrp)
-	if not targetChar then return end
-	
-	local targetPart = targetChar:FindFirstChild("Torso") or targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("HumanoidRootPart")
-	if not targetPart then return end
-	
-	flinging = true
-	
-	local selectionBox = Instance.new("SelectionBox")
-	selectionBox.Name = "VisorTargetOutline"
-	selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
-	selectionBox.LineThickness = 0.05
-	selectionBox.Adornee = targetChar
-	selectionBox.Parent = targetChar
-	
-	local savedCFrame = hrp.CFrame
-	local rootJoint = hrp:FindFirstChild("RootJoint") or char:FindFirstChild("RootJoint", true) or (char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root"))
-	local originalC0 = rootJoint and rootJoint.C0
-	
-	local startTime = tick()
-	local duration = 0.4
-	
-	local loop
-	loop = RunService.Stepped:Connect(function()
-		local elapsed = tick() - startTime
-		
-		if elapsed > duration or not targetPart or not targetPart.Parent or not char or not hrp or not rootJoint then
-			loop:Disconnect()
-			if selectionBox then selectionBox:Destroy() end
-			
-			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
-			
-			hrp.AssemblyLinearVelocity = Vector3.zero
-			hrp.AssemblyAngularVelocity = Vector3.zero
-			
-			humanoid.PlatformStand = false
-			humanoid:ChangeState(Enum.HumanoidStateType.Running)
-			flinging = false
-			return
-		end
-		
-		humanoid.PlatformStand = true
-		
-		for _, part in pairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then part.CanCollide = false end
-		end
-		
-		hrp.CFrame = targetPart.CFrame
-		
-		hrp.AssemblyLinearVelocity = Vector3.zero
-		hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
-		
-		rootJoint.C0 = CFrame.new(0, 50000, 0) * originalC0
-	end)
-end
+end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
+	
 	if visorActive and input.KeyCode == Enum.KeyCode.V then
-		fling()
+		if isHolding then
+			dropObject()
+		else
+			local part = getClosestUnanchoredPart()
+			if part then
+				pickupObject(part)
+			end
+		end
 	end
 end)
 
+-- UI Dragging System
 local dragging, dragInput, dragStart, startPos
 
 dragBar.InputBegan:Connect(function(input)
