@@ -291,18 +291,27 @@ local function doMagnet()
 	
 	for _, o in pairs(workspace:GetDescendants()) do
 		if o:IsA("BasePart") and not o.Anchored then
+			
+			-- Safer check that works on all executors
+			local isCharacter = false
 			local md = o:FindFirstAncestorOfClass("Model")
-			if md and (md:FindFirstChildWhichIsA("Humanoid") or o:FindFirstAncestorWhichIsA("Accessory") or o:FindFirstAncestorWhichIsA("Tool")) then continue end
+			if md and md:FindFirstChildWhichIsA("Humanoid") then isCharacter = true end
+			if o:FindFirstAncestorWhichIsA("Accessory") or o:FindFirstAncestorWhichIsA("Tool") then isCharacter = true end
 			
-			for _, f in pairs(o:GetChildren()) do
-				if f:IsA("BodyMover") or f:IsA("Constraint") or f:IsA("AlignPosition") or f:IsA("Torque") then f:Destroy() end
+			if not isCharacter then
+				for _, f in pairs(o:GetChildren()) do
+					if f:IsA("BodyMover") or f:IsA("Constraint") or f:IsA("AlignPosition") or f:IsA("Torque") then f:Destroy() end
+				end
+				
+				o.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
+				o.CanCollide = false
+				
+				o.CFrame = CFrame.new(targetHeight + Vector3.new(math.random(-2,2), math.random(-1,2), math.random(-2,2)))
+				
+				-- The magic velocity trick to maintain network ownership and prevent sleeping
+				o.AssemblyLinearVelocity = Vector3.new(14.4626, 14.4626, 14.4626)
+				o.AssemblyAngularVelocity = Vector3.new(14.4626, 14.4626, 14.4626)
 			end
-			
-			o.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
-			o.CanCollide = false
-			
-			o.CFrame = CFrame.new(targetHeight + Vector3.new(math.random(-2,2), math.random(-1,2), math.random(-2,2)))
-			o.AssemblyLinearVelocity, o.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
 		end
 	end
 end
