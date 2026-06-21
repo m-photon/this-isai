@@ -1,4 +1,6 @@
--- Executable Private FE Animations GUI
+-- Executable Private FE Animations GUI (High Compatibility Version)
+
+print("Starting GUI Script...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -6,14 +8,26 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
--- Executor GUI Protection (Hides the GUI in CoreGui or gethui() if supported)
-local guiParent = (gethui and gethui()) or pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
+-- Bulletproof GUI Parenting
+local guiParent
+local success, coreGui = pcall(function() return game:GetService("CoreGui") end)
+
+if gethui then
+    guiParent = gethui()
+    print("Using gethui() for GUI parent.")
+elseif success and coreGui then
+    guiParent = coreGui
+    print("Using CoreGui for GUI parent.")
+else
+    guiParent = player:WaitForChild("PlayerGui")
+    print("Using PlayerGui for GUI parent. (Note: GUI will disappear if you die)")
+end
 
 -- Define colors
-local themeColor = Color3.fromRGB(0, 255, 120) -- Custom Green
-local grayColor = Color3.fromRGB(100, 100, 100) -- Mid-Gray for diamond
+local themeColor = Color3.fromRGB(0, 255, 120) 
+local grayColor = Color3.fromRGB(100, 100, 100)
 
--- Prevent duplicate GUIs if the script runs multiple times
+-- Prevent duplicate GUIs
 if guiParent:FindFirstChild("PrivateAnimationsGui") then
     guiParent.PrivateAnimationsGui:Destroy()
 end
@@ -24,6 +38,8 @@ mainGui.Name = "PrivateAnimationsGui"
 mainGui.ResetOnSpawn = false
 mainGui.IgnoreGuiInset = true
 mainGui.Parent = guiParent
+
+print("GUI successfully parented!")
 
 -- Create the Main Frame
 local mainFrame = Instance.new("Frame")
@@ -57,21 +73,20 @@ titleLabel.Parent = mainFrame
 local closeButton = Instance.new("TextButton")
 closeButton.Name = "CloseButton"
 closeButton.Size = UDim2.new(0, 30, 0, 25)
-closeButton.Position = UDim2.new(1, -35, 0, 5) -- Positioned in the top right
+closeButton.Position = UDim2.new(1, -35, 0, 5)
 closeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 closeButton.BorderSizePixel = 1
-closeButton.BorderColor3 = Color3.fromRGB(255, 50, 50) -- Red border
+closeButton.BorderColor3 = Color3.fromRGB(255, 50, 50)
 closeButton.Text = "X"
 closeButton.Font = Enum.Font.GothamBold
 closeButton.TextSize = 14
-closeButton.TextColor3 = Color3.fromRGB(255, 50, 50) -- Red text
+closeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
 closeButton.Parent = mainFrame
 
 local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 4)
 closeCorner.Parent = closeButton
 
--- Close button hover effect
 closeButton.MouseEnter:Connect(function()
     closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
     closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -81,7 +96,6 @@ closeButton.MouseLeave:Connect(function()
     closeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
 end)
 
--- Close button click logic
 closeButton.MouseButton1Click:Connect(function()
     mainGui:Destroy()
 end)
@@ -167,12 +181,10 @@ end
 -- === CREATE THE INSPECTOR BUTTON ===
 local inspectorBtn = createStyledButton("InspectorButton", "Inspector", buttonContainer)
 
--- Generate remaining blank buttons
 for i = 1, 14 do
     createStyledButton("BlankButton" .. i, "", buttonContainer)
 end
 
--- Update CanvasSize based on the number of buttons
 gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     buttonContainer.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 20)
 end)
@@ -212,14 +224,13 @@ end)
 
 -- === ANIMATION INTEGRATION LOGIC ===
 inspectorBtn.MouseButton1Click:Connect(function()
-    -- This pcall ensures the GUI won't crash if it's run without the main FE script's variables
+    print("Inspector Button Clicked!")
     local success, err = pcall(function()
         if reanimated == true and ATTACK == false then
             coroutine.resume(coroutine.create(function()
                 ATTACK = true
                 Rooted = true
                 
-                -- ONLY moves the hands behind the back, nothing else
                 for i = 0, 2, 0.1 / Animation_Speed do
                     Swait()
                     RightShoulder.C0 = Clerp(RightShoulder.C0, CFrame.new(1.1, 0.3, 0.6) * CFrame.Angles(math.rad(-45), math.rad(-10), math.rad(-30)) * RIGHTSHOULDERC0, 1 / Animation_Speed)
@@ -233,6 +244,8 @@ inspectorBtn.MouseButton1Click:Connect(function()
     end)
     
     if not success then
-        warn("Animation failed to play. Make sure this script is executed alongside your FE Reanimation variables (Swait, Clerp, RootJoint, etc.). Error: " .. tostring(err))
+        warn("Animation Error: " .. tostring(err))
     end
 end)
+
+print("Script execution finished. Menu should be visible.")
