@@ -169,6 +169,9 @@ local function flingNearestPlayer()
 	
 	flinging = true
 	
+	-- STATE FIX: Disable the Humanoid balance system so it doesn't fight the extreme physics velocity
+	humanoid.PlatformStand = true
+	
 	-- 1. Create and apply the Red Highlight onto the target character
 	local targetHighlight = Instance.new("Highlight")
 	targetHighlight.Name = "VisorTargetHighlight"
@@ -217,47 +220,58 @@ local function flingNearestPlayer()
 	
 	local startTime = tick()
 	local travelDuration = 0.25 
-	local totalDuration = 1.4  
+	local totalDuration = 1.3  
+	
+	-- Quick function to wipe out all physics states on all body parts
+	local function clearAllVelocity()
+		if not hrp or not char then return end
+		for _, part in pairs(char:GetChildren()) do
+			if part:IsA("BasePart") then
+				part.Velocity = Vector3.new(0, 0, 0)
+				part.RotVelocity = Vector3.new(0, 0, 0)
+				pcall(function()
+					part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+					part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+				end)
+			end
+		end
+	end
 	
 	local connection
 	connection = RunService.Heartbeat:Connect(function()
 		local elapsed = tick() - startTime
 		
-		-- Cleanup condition (Fixed to stabilize your physics and prevent self-flinging)
+		-- Cleanup condition
 		if elapsed > totalDuration or not targetPart or not targetPart.Parent or not char or not hrp or not rootJoint then
 			
-			-- Destroy forces and target highlight if it still exists
+			-- Destroy forces immediately
 			if bodyAngularVelocity then bodyAngularVelocity:Destroy() end
 			if targetHighlight then targetHighlight:Destroy() end
 			
-			-- CRITICAL FIX: Temporarily anchor the root to cancel joint stretch tension forces
+			-- Hard anchor character to instantly kill running physics vectors
 			hrp.Anchored = true
 			
-			-- Snap root completely back and restore normal character matrix configurations
+			-- Safely re-align visual limb matrices back to base operations
 			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
 			hrp.CFrame = savedCFrame
 			
-			-- CRITICAL FIX: Wipe out both old and modern Engine velocities instantly
-			hrp.Velocity = Vector3.new(0, 0, 0)
-			hrp.RotVelocity = Vector3.new(0, 0, 0)
-			pcall(function()
-				hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-				hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			end)
+			-- Wipe velocities across all parts
+			clearAllVelocity()
 			
-			-- Restore original collisions
+			-- Restore normal collisions
 			for part, canCollide in pairs(oldCollisions) do
 				if part and part.Parent then part.CanCollide = canCollide end
 			end
 			
 			if camera and humanoid then camera.CameraSubject = humanoid end
 			
-			-- Wait a tiny physics step for assembly stabilization, then release safely
-			task.delay(0.05, function()
-				if hrp and hrp.Parent then
-					hrp.Velocity = Vector3.new(0, 0, 0)
-					hrp.RotVelocity = Vector3.new(0, 0, 0)
+			-- Allow physics step to completely register the position lock before letting go
+			task.delay(0.1, function()
+				if hrp and hrp.Parent and humanoid then
+					clearAllVelocity()
 					hrp.Anchored = false
+					humanoid.PlatformStand = false
+					humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) -- Force character back to normal standing physics
 				end
 			end)
 			
@@ -274,13 +288,13 @@ local function flingNearestPlayer()
 			local alpha = elapsed / travelDuration
 			currentPos = savedCFrame.Position:Lerp(destination, alpha)
 		else
-			currentPos = destination + Vector3.new(0, 0.1, 0)
+			currentPos = destination + Vector3.new(0, 0.05, 0)
 		end
 		
 		-- Invisible root hub tracks onto target to perform the physics crush fling
 		hrp.CFrame = CFrame.new(currentPos) * savedCFrame.Rotation
 		
-		-- FIX: Upgraded velocity vector to 99999 so it overpowers the target's physics solver
+		-- Maintain ultra high physics vectors to destroy the target's network ownership authority
 		hrp.Velocity = Vector3.new(99999, 99999, 99999) 
 		pcall(function()
 			hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
