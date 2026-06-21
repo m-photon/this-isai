@@ -5,15 +5,27 @@ local rs = game:GetService("RunService")
 local lp = plrs.LocalPlayer
 local mouse = lp:GetMouse()
 local cam = workspace.CurrentCamera
-local core = pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or lp:WaitForChild("PlayerGui")
 
--- Safely clear previous menu if it exists
-local oldMenu = core:FindFirstChild("nos_dywll_PrivateMenu")
-if oldMenu then pcall(function() oldMenu:Destroy() end) end
+-- Safely determine the absolute best execution GUI parent container
+local core = nil
+if gethui then
+	core = gethui()
+elseif syn and syn.protect_gui then
+	core = lp:WaitForChild("PlayerGui")
+else
+	local success, res = pcall(function() return game:GetService("CoreGui") end)
+	core = (success and res) and res or lp:WaitForChild("PlayerGui")
+end
+
+-- Safely clear previous menu instances
+if core:FindFirstChild("nos_dywll_PrivateMenu") then
+	pcall(function() core["nos_dywll_PrivateMenu"]:Destroy() end)
+end
 
 local sg = Instance.new("ScreenGui")
 sg.Name = "nos_dywll_PrivateMenu"
 sg.ResetOnSpawn = false
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 sg.Parent = core
 
 --- MAIN MENU ---
@@ -60,7 +72,7 @@ title.Font = Enum.Font.Code
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextYAlignment = Enum.TextYAlignment.Center
 title.ZIndex = 2
-title.Active = false
+title.Active = false -- Prevents text blocking mouse inputs on the topbar drag frame
 title.Parent = topbar
 
 --- PLAYER INTEL SIDE MENU ---
@@ -144,7 +156,7 @@ local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 6)
 layout.Parent = content
 
---- STATE & LOGIC ---
+--- STATE CONFIGURATION ---
 local state = {
 	c = "disabled",
 	e = "disabled",
@@ -153,11 +165,15 @@ local state = {
 	fling_running = false
 }
 
+local COLOR_DISABLED = Color3.fromRGB(25, 25, 25)
+local COLOR_ARMED = Color3.fromRGB(55, 55, 75) 
+local COLOR_ACTIVE = Color3.fromRGB(35, 75, 35) 
+
 local function createBtn(name, text)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
 	btn.Size = UDim2.new(1, 0, 0, 36)
-	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	btn.BackgroundColor3 = COLOR_DISABLED
 	btn.BorderSizePixel = 0
 	btn.Text = text
 	btn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -212,12 +228,7 @@ local eStatus = createStatus("eStatus", "> [E] Player ESP Active", Color3.fromRG
 local tStatus = createStatus("tStatus", "> [T] Tracers Active", Color3.fromRGB(255, 150, 50))
 local vStatus = createStatus("vStatus", "> Flinging Target...", Color3.fromRGB(255, 100, 100))
 
---- COLOR CONFIG ---
-local COLOR_DISABLED = Color3.fromRGB(25, 25, 25)
-local COLOR_ARMED = Color3.fromRGB(55, 55, 75) 
-local COLOR_ACTIVE = Color3.fromRGB(35, 75, 35) 
-
---- FUNCTIONS ---
+--- CORE LOGIC CHECKS ---
 local function getTarget(hrp)
 	local tgt, dist = nil, math.huge
 	for _, p in pairs(plrs:GetPlayers()) do
@@ -285,32 +296,43 @@ local function updateESP()
 	end
 end
 
---- TRACERS LOGIC ---
+--- TRACERS LOGIC WITH EXECUTOR CRASH GUARD ---
 local tracers = {}
+local hasDrawing = pcall(function() return Drawing ~= nil and Drawing.new ~= nil end)
+
 local function updateTracers()
+	if not hasDrawing or state.t ~= "active" then 
+		for _, v in pairs(tracers) do pcall(function() v.Visible = false end) end
+		return 
+	end
+	
 	for _, p in pairs(plrs:GetPlayers()) do
 		if p ~= lp then
 			if not tracers[p] then
-				local line = Drawing.new("Line")
-				line.Visible = false
-				line.Color = Color3.fromRGB(255, 50, 50)
-				line.Thickness = 1
-				line.Transparency = 1
-				tracers[p] = line
+				local success, line = pcall(function() return Drawing.new("Line") end)
+				if success then
+					line.Visible = false
+					line.Color = Color3.fromRGB(255, 50, 50)
+					line.Thickness = 1
+					line.Transparency = 1
+					tracers[p] = line
+				end
 			end
 			
 			local line = tracers[p]
-			if state.t == "active" and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
-				local vector, onScreen = cam:WorldToScreenPoint(p.Character.HumanoidRootPart.Position)
-				if onScreen then
-					line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
-					line.To = Vector2.new(vector.X, vector.Y)
-					line.Visible = true
+			if line then
+				if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
+					local vector, onScreen = cam:WorldToScreenPoint(p.Character.HumanoidRootPart.Position)
+					if onScreen then
+						line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
+						line.To = Vector2.new(vector.X, vector.Y)
+						line.Visible = true
+					else
+						line.Visible = false
+					end
 				else
 					line.Visible = false
 				end
-			else
-				line.Visible = false
 			end
 		end
 	end
@@ -324,15 +346,11 @@ plrs.PlayerRemoving:Connect(function(p)
 end)
 
 rs.RenderStepped:Connect(function()
-	if state.e == "active" then
-		updateESP()
-	else
-		espFolder:ClearAllChildren()
-	end
+	if state.e == "active" then updateESP() else espFolder:ClearAllChildren() end
 	updateTracers()
 end)
 
---- MENU BUTTON INTERACTIONS (ARMING STAGE) ---
+--- MENU BUTTON INTERFACE OPERATIONS (ARMING MECHANICS) ---
 cBtn.MouseButton1Click:Connect(function()
 	if state.c == "disabled" then
 		state.c = "armed"
@@ -382,9 +400,7 @@ iBtn.MouseButton1Click:Connect(function()
 	sideOpen = not sideOpen
 	sideMenu.Visible = sideOpen
 	iBtn.BackgroundColor3 = sideOpen and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-	if sideOpen then
-		refreshIntel()
-	end
+	if sideOpen then refreshIntel() end
 end)
 
 --- GHOST FLING EXECUTION ---
@@ -419,15 +435,15 @@ local function ghostFling()
 	conn = rs.Heartbeat:Connect(function()
 		if tick() - start > 1.5 or not tp or not tp.Parent or not char or not hrp or not hum then
 			conn:Disconnect()
-			if bav and bav.Parent then bav:Destroy() end
-			if bv and bv.Parent then bv:Destroy() end
+			if bav and bav.Parent then pcall(function() bav:Destroy() end) end
+			if bv and bv.Parent then pcall(function() bv:Destroy() end) end
 			if hrp and hrp.Parent then
 				hrp.AssemblyLinearVelocity = Vector3.zero
 				hrp.AssemblyAngularVelocity = Vector3.zero
 				hrp.CFrame = oldCFrame
 			end
 			if hum and hum.Parent then
-				hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+				pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
 			end
 			state.fling_running = false
 			vStatus.Visible = false
@@ -435,71 +451,54 @@ local function ghostFling()
 			return
 		end
 		
-		hum:ChangeState(Enum.HumanoidStateType.Physics)
+		pcall(function() hum:ChangeState(Enum.HumanoidStateType.Physics) end)
 		for _, part in pairs(char:GetChildren()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = false
-			end
+			if part:IsA("BasePart") then part.CanCollide = false end
 		end
 		
 		hrp.CFrame = tp.CFrame * CFrame.new(math.random(-1,1)*0.05, math.random(-1,1)*0.05, math.random(-1,1)*0.05)
 	end)
 end
 
---- SILENT AIM FUNCTION HOOKS ---
-local oldRaycast
-oldRaycast = hookfunction(workspace.Raycast, newcclosure(function(self, origin, direction, params)
-	if state.c == "active" and not checkcaller() then
-		local closest = getClosestToCursor()
-		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-			local targetPos = closest.Character.Head.Position
-			local newDirection = (targetPos - origin).Unit * direction.Magnitude
-			return oldRaycast(self, origin, newDirection, params)
-		end
-	end
-	return oldRaycast(self, origin, direction, params)
-end))
-
-local oldFindPartOnRay
-oldFindPartOnRay = hookfunction(workspace.FindPartOnRay, newcclosure(function(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
-	if state.c == "active" and not checkcaller() then
-		local closest = getClosestToCursor()
-		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-			local targetPos = closest.Character.Head.Position
-			local newRay = Ray.new(ray.Origin, (targetPos - ray.Origin).Unit * ray.Direction.Magnitude)
-			return oldFindPartOnRay(self, newRay, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
-		end
-	end
-	return oldFindPartOnRay(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
-end))
-
-local oldFindPartOnRayWithIgnoreList
-oldFindPartOnRayWithIgnoreList = hookfunction(workspace.FindPartOnRayWithIgnoreList, newcclosure(function(self, ray, ignoreList, terrainCellsAreCubes, fractionMultiplier)
-	if state.c == "active" and not checkcaller() then
-		local closest = getClosestToCursor()
-		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-			local targetPos = closest.Character.Head.Position
-			local newRay = Ray.new(ray.Origin, (targetPos - ray.Origin).Unit * ray.Direction.Magnitude)
-			return oldFindPartOnRayWithIgnoreList(self, newRay, ignoreList, terrainCellsAreCubes, fractionMultiplier)
-		end
-	end
-	return oldFindPartOnRayWithIgnoreList(self, ray, ignoreList, terrainCellsAreCubes, fractionMultiplier)
-end))
-
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, idx)
-	if state.c == "active" and not checkcaller() and self == mouse then
-		local closest = getClosestToCursor()
-		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-			if idx == "Hit" then
-				return closest.Character.Head.CFrame
-			elseif idx == "Target" then
-				return closest.Character.Head
+--- CRASH-GUARDED ENGINE ENVIRONMENT HOOKS ---
+if hookfunction and hookmetamethod then
+	pcall(function()
+		local oldRaycast
+		oldRaycast = hookfunction(workspace.Raycast, newcclosure(function(self, origin, direction, params)
+			if state.c == "active" and not checkcaller() then
+				local closest = getClosestToCursor()
+				if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+					return oldRaycast(self, origin, (closest.Character.Head.Position - origin).Unit * direction.Magnitude, params)
+				end
 			end
-		end
-	end
-	return oldIndex(self, idx)
-end))
+			return oldRaycast(self, origin, direction, params)
+		end))
+
+		local oldFindPartOnRay
+		oldFindPartOnRay = hookfunction(workspace.FindPartOnRay, newcclosure(function(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
+			if state.c == "active" and not checkcaller() then
+				local closest = getClosestToCursor()
+				if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+					local newRay = Ray.new(ray.Origin, (closest.Character.Head.Position - ray.Origin).Unit * ray.Direction.Magnitude)
+					return oldFindPartOnRay(self, newRay, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
+				end
+			end
+			return oldFindPartOnRay(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
+		end))
+
+		local oldIndex
+		oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, idx)
+			if state.c == "active" and not checkcaller() and self == mouse then
+				local closest = getClosestToCursor()
+				if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+					if idx == "Hit" then return closest.Character.Head.CFrame
+					elseif idx == "Target" then return closest.Character.Head end
+				end
+			end
+			return oldIndex(self, idx)
+		end))
+	end)
+end
 
 --- KEYBIND INPUT LISTENER ---
 uis.InputBegan:Connect(function(k, p)
@@ -546,35 +545,37 @@ uis.InputBegan:Connect(function(k, p)
 	end
 end)
 
---- ROCK SOLID MOUSE DRAG ENGINE ---
-local dragging = false
-local dragStart = nil
-local startPos = nil
+--- ENGINE-NATIVE SMOOTH UI DRAG SYSTEM ---
+local Dragging = false
+local DragInput, DragStart, StartPos
+
+local function Update(input)
+	local Delta = input.Position - DragStart
+	main.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
+end
 
 topbar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = uis:GetMouseLocation()
-		startPos = main.Position
+		Dragging = true
+		DragStart = input.Position
+		StartPos = main.Position
 		
-		local releaseConnection
-		releaseConnection = input.Changed:Connect(function()
+		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-				releaseConnection:Disconnect()
+				Dragging = false
 			end
 		end)
 	end
 end)
 
+topbar.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		DragInput = input
+	end
+end)
+
 uis.InputChanged:Connect(function(input)
-	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = uis:GetMouseLocation() - dragStart
-		main.Position = UDim2.new(
-			startPos.X.Scale, 
-			startPos.X.Offset + delta.X, 
-			startPos.Y.Scale, 
-			startPos.Y.Offset + delta.Y
-		)
+	if input == DragInput and Dragging then
+		Update(input)
 	end
 end)
