@@ -243,11 +243,11 @@ end
 local function getClosestToCursor()
 	local closestDist = math.huge
 	local closestPlr = nil
-	local mousePos = Vector2.new(mouse.X, mouse.Y)
+	local mousePos = uis:GetMouseLocation() -- Fixed: More precise than mouse.X/Y
 	
 	for _, p in pairs(plrs:GetPlayers()) do
 		if p ~= lp and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
-			local vector, onScreen = cam:WorldToScreenPoint(p.Character.Head.Position)
+			local vector, onScreen = cam:WorldToViewportPoint(p.Character.Head.Position) -- Fixed: Matches viewport positioning
 			if onScreen then
 				local dist = (Vector2.new(vector.X, vector.Y) - mousePos).Magnitude
 				if dist < closestDist then
@@ -322,7 +322,7 @@ local function updateTracers()
 			local line = tracers[p]
 			if line then
 				if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
-					local vector, onScreen = cam:WorldToScreenPoint(p.Character.HumanoidRootPart.Position)
+					local vector, onScreen = cam:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
 					if onScreen then
 						line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
 						line.To = Vector2.new(vector.X, vector.Y)
@@ -463,6 +463,7 @@ end
 --- CRASH-GUARDED ENGINE ENVIRONMENT HOOKS ---
 if hookfunction and hookmetamethod then
 	pcall(function()
+		-- Hooking standard direct calls
 		local oldRaycast
 		oldRaycast = hookfunction(workspace.Raycast, newcclosure(function(self, origin, direction, params)
 			if state.c == "active" and not checkcaller() then
@@ -488,7 +489,7 @@ if hookfunction and hookmetamethod then
 
 		local oldIndex
 		oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, idx)
-			if state.c == "active" and not checkcaller() and self == mouse then
+			if state.c == "active" and not checkcaller() and (self == mouse or (typeof(self) == "Instance" and self:IsA("Mouse"))) then
 				local closest = getClosestToCursor()
 				if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 					if idx == "Hit" then return closest.Character.Head.CFrame
@@ -496,6 +497,36 @@ if hookfunction and hookmetamethod then
 				end
 			end
 			return oldIndex(self, idx)
+		end))
+
+		-- Fixed: Added critical method-call hook (__namecall) for engine raycasts
+		local oldNamecall
+		oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+			local method = getnamecallmethod()
+			local args = {...}
+			
+			if state.c == "active" and not checkcaller() and self == workspace then
+				if method == "Raycast" then
+					local origin = args[1]
+					local direction = args[2]
+					local params = args[3]
+					
+					local closest = getClosestToCursor()
+					if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+						args[2] = (closest.Character.Head.Position - origin).Unit * direction.Magnitude
+						return oldNamecall(self, unpack(args))
+					end
+				elseif method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" then
+					local ray = args[1]
+					
+					local closest = getClosestToCursor()
+					if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+						args[1] = Ray.new(ray.Origin, (closest.Character.Head.Position - ray.Origin).Unit * ray.Direction.Magnitude)
+						return oldNamecall(self, unpack(args))
+					end
+				end
+			end
+			return oldNamecall(self, ...)
 		end))
 	end)
 end
