@@ -16,7 +16,7 @@ sg.Parent = core
 
 --- MAIN MENU ---
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 350, 0, 280) -- Expanded to fit 5 buttons
+main.Size = UDim2.new(0, 350, 0, 280) 
 main.Position = UDim2.new(0.5, -175, 0.5, -140)
 main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 main.BorderSizePixel = 0
@@ -43,6 +43,7 @@ topbar.Size = UDim2.new(1, 0, 0, 45)
 topbar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 topbar.BorderSizePixel = 0
 topbar.ZIndex = 2
+topbar.Active = true -- Required for interaction
 topbar.Parent = main
 
 local title = Instance.new("TextLabel")
@@ -282,7 +283,7 @@ local function updateTracers()
 			if state.t and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
 				local vector, onScreen = cam:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
 				if onScreen then
-					line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y) -- Originates from bottom center
+					line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
 					line.To = Vector2.new(vector.X, vector.Y)
 					line.Visible = true
 				else
@@ -369,23 +370,28 @@ local function ghostFling()
 	sb.Parent = tgt
 	
 	local start = tick()
-	local pts = {}
-	for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then table.insert(pts, p) end end
 	
-	local conn; conn = rs.Stepped:Connect(function()
-		if tick() - start > 0.6 or not tp or not tp.Parent or not char or not hrp then
+	-- We use Heartbeat because it syncs better with physics calculation
+	local conn; conn = rs.Heartbeat:Connect(function()
+		if tick() - start > 0.8 or not tp or not tp.Parent or not char or not hrp then
 			conn:Disconnect()
 			if sb then sb:Destroy() end
 			hrp.AssemblyLinearVelocity, hrp.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
 			hrp.CFrame = sc
-			hum:ChangeState(Enum.HumanoidStateType.Running)
+			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
 			cam.CameraType, cam.CameraSubject = oct, hum
 			state.fling = false
 			return
 		end
-		for _, p in pairs(pts) do p.CanCollide = false end
-		hrp.CFrame = tp.CFrame
-		hrp.AssemblyLinearVelocity, hrp.AssemblyAngularVelocity = Vector3.zero, Vector3.new(0, 99999, 0)
+		
+		-- Random micro-offsets to trigger fresh collision calculations repeatedly
+		local ox = math.random(-1, 1) * 0.1
+		local oy = math.random(-1, 1) * 0.1
+		local oz = math.random(-1, 1) * 0.1
+		
+		hrp.CFrame = tp.CFrame * CFrame.new(ox, oy, oz)
+		hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		hrp.AssemblyAngularVelocity = Vector3.new(100000, 100000, 100000)
 	end)
 end
 
@@ -435,19 +441,32 @@ uis.InputBegan:Connect(function(k, p)
 	end
 end)
 
---- DRAG LOGIC ---
-local drag, ds, sp
-topbar.InputBegan:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.MouseButton1 then
-		drag, ds, sp = true, i.Position, main.Position
+--- SMOOTH GUI DRAG LOGIC ---
+local dragging, dragInput, dragStart, startPos
+
+topbar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
 	end
 end)
-uis.InputChanged:Connect(function(i)
-	if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
-		local d = i.Position - ds
-		main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
+
+topbar.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
 	end
 end)
-uis.InputEnded:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
+
+uis.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
 end)
