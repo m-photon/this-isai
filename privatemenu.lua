@@ -145,14 +145,13 @@ local function fling()
 	
 	local hl = Instance.new("Highlight")
 	hl.Name = "VisorTargetHighlight"
-	hl.FillTransparency = 1
-	hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+	hl.FillColor = Color3.fromRGB(255, 0, 0)     -- Prevents default Roblox cyan flash
+	hl.FillTransparency = 1                     -- Perfectly transparent center
+	hl.OutlineColor = Color3.fromRGB(255, 0, 0)  -- Solid red outline
 	hl.OutlineTransparency = 0
 	hl.Parent = targetChar
 	
 	local camera = workspace.CurrentCamera
-	local staticPart = char:FindFirstChild("Head") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-	if camera and staticPart then camera.CameraSubject = staticPart end
 	
 	local savedCFrame = hrp.CFrame
 	local rootJoint = hrp:FindFirstChild("RootJoint") or char:FindFirstChild("RootJoint", true) or (char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root"))
@@ -166,11 +165,11 @@ local function fling()
 		if not char then return end
 		for _, part in pairs(char:GetDescendants()) do
 			if part:IsA("BasePart") then
-				part.Velocity = Vector3.new(0, 0, 0)
-				part.RotVelocity = Vector3.new(0, 0, 0)
+				part.Velocity = Vector3.zero
+				part.RotVelocity = Vector3.zero
 				pcall(function()
-					part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-					part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+					part.AssemblyLinearVelocity = Vector3.zero
+					part.AssemblyAngularVelocity = Vector3.zero
 				end)
 			end
 		end
@@ -184,22 +183,14 @@ local function fling()
 			loop:Disconnect()
 			if hl then hl:Destroy() end
 			
-			hrp.Anchored = true
 			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
-			hrp.CFrame = savedCFrame
 			
 			resetPhysics()
 			if camera and humanoid then camera.CameraSubject = humanoid end
 			
-			task.delay(0.1, function()
-				if hrp and hrp.Parent and humanoid then
-					resetPhysics()
-					hrp.Anchored = false
-					humanoid.PlatformStand = false
-					humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-				end
-				flinging = false
-			end)
+			humanoid.PlatformStand = false
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			flinging = false
 			return
 		end
 		
@@ -217,8 +208,8 @@ local function fling()
 			hrp.AssemblyAngularVelocity = Vector3.new(15000, 15000, 15000)
 		end)
 		
-		-- Desync limbs into the skybox so they look invisible to others
-		rootJoint.C0 = hrp.CFrame:Inverse() * (savedCFrame * CFrame.new(0, 2000, 0)) * originalC0
+		-- Moves visual body seamlessly above the moving HRP instead of pinning it to the home position
+		rootJoint.C0 = CFrame.new(0, 2000, 0) * originalC0
 	end)
 end
 
