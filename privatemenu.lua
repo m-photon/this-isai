@@ -29,12 +29,12 @@ stroke.Parent = main
 
 local bgDiamond = Instance.new("ImageLabel")
 bgDiamond.Size = UDim2.new(0.7, 0, 0.7, 0)
-bgDiamond.Position = UDim2.new(0.5, 0, 0.5, 25) 
+bgDiamond.Position = UDim2.new(0.5, 0, 0.5, 25)
 bgDiamond.AnchorPoint = Vector2.new(0.5, 0.5)
 bgDiamond.BackgroundTransparency = 1
 bgDiamond.Image = "rbxassetid://6034287525"
-bgDiamond.ImageTransparency = 0.85 
-bgDiamond.ZIndex = 0 
+bgDiamond.ImageTransparency = 0.85
+bgDiamond.ZIndex = 0
 bgDiamond.Parent = main
 
 --- TOP BAR ---
@@ -49,7 +49,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -20, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.RichText = true 
+title.RichText = true
 title.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 20
@@ -417,8 +417,8 @@ end))
 
 uis.InputBegan:Connect(function(k, p)
 	if p then return end
-	if k.KeyCode == Enum.KeyCode.V and state.v then 
-		ghostFling() 
+	if k.KeyCode == Enum.KeyCode.V and state.v then
+		ghostFling()
 	elseif k.KeyCode == Enum.KeyCode.C then
 		state.c = not state.c
 		cStatus.Visible = state.c
