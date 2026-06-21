@@ -37,6 +37,7 @@ bgDiamond.ImageTransparency = 0.85
 bgDiamond.ZIndex = 0 
 bgDiamond.Parent = main
 
+--- TOP BAR ---
 local topbar = Instance.new("Frame")
 topbar.Size = UDim2.new(1, 0, 0, 45)
 topbar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -58,6 +59,76 @@ title.TextYAlignment = Enum.TextYAlignment.Center
 title.ZIndex = 2
 title.Parent = topbar
 
+--- PLAYER INTEL SIDE MENU ---
+local sideOpen = false
+
+local sideMenu = Instance.new("Frame")
+sideMenu.Size = UDim2.new(0, 200, 1, 0)
+sideMenu.Position = UDim2.new(1, 5, 0, 0)
+sideMenu.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+sideMenu.BorderSizePixel = 0
+sideMenu.Visible = false
+sideMenu.Parent = main
+
+local sideStroke = Instance.new("UIStroke")
+sideStroke.Color = Color3.fromRGB(45, 45, 45)
+sideStroke.Thickness = 1
+sideStroke.Parent = sideMenu
+
+local sideTitle = Instance.new("TextLabel")
+sideTitle.Size = UDim2.new(1, 0, 0, 30)
+sideTitle.BackgroundTransparency = 1
+sideTitle.Text = " Server Intel"
+sideTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+sideTitle.TextSize = 14
+sideTitle.Font = Enum.Font.Code
+sideTitle.TextXAlignment = Enum.TextXAlignment.Left
+sideTitle.Parent = sideMenu
+
+local sideLine = Instance.new("Frame")
+sideLine.Size = UDim2.new(1, 0, 0, 1)
+sideLine.Position = UDim2.new(0, 0, 0, 30)
+sideLine.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+sideLine.BorderSizePixel = 0
+sideLine.Parent = sideMenu
+
+local sideScroll = Instance.new("ScrollingFrame")
+sideScroll.Size = UDim2.new(1, -10, 1, -35)
+sideScroll.Position = UDim2.new(0, 5, 0, 35)
+sideScroll.BackgroundTransparency = 1
+sideScroll.BorderSizePixel = 0
+sideScroll.ScrollBarThickness = 4
+sideScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+sideScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+sideScroll.Parent = sideMenu
+
+local sideLayout = Instance.new("UIListLayout")
+sideLayout.Padding = UDim.new(0, 4)
+sideLayout.Parent = sideScroll
+
+local function refreshIntel()
+	for _, child in pairs(sideScroll:GetChildren()) do
+		if child:IsA("TextLabel") then child:Destroy() end
+	end
+	
+	for _, p in pairs(plrs:GetPlayers()) do
+		local ageDays = p.AccountAge
+		local joinDate = os.date("%Y-%m-%d", os.time() - (ageDays * 86400))
+		
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, 0, 0, 30)
+		lbl.BackgroundTransparency = 1
+		lbl.Text = p.Name .. "\n<font color='#888888'>" .. joinDate .. "</font>"
+		lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+		lbl.TextSize = 13
+		lbl.Font = Enum.Font.Code
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.RichText = true
+		lbl.Parent = sideScroll
+	end
+end
+
+--- BUTTONS ---
 local content = Instance.new("Frame")
 content.Size = UDim2.new(1, -20, 1, -55)
 content.Position = UDim2.new(0, 10, 0, 50)
@@ -91,8 +162,7 @@ end
 
 local vBtn = createBtn("vBtn", "UN Fling [V]")
 local tBtn = createBtn("tBtn", "Item Magnet [T]")
-local cBtn = createBtn("cBtn", "Chair Overload [G]")
-
+local iBtn = createBtn("iBtn", "Server Intel")
 
 --- CLEAN STATUS HUD ---
 local hud = Instance.new("Frame")
@@ -116,7 +186,7 @@ local function createStatus(name, text, color)
 	lbl.TextSize = 15
 	lbl.Font = Enum.Font.Code
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	lbl.TextStrokeTransparency = 0.2 -- Gives it the raw script overlay look
+	lbl.TextStrokeTransparency = 0.2
 	lbl.Visible = false
 	lbl.Parent = hud
 	return lbl
@@ -124,16 +194,12 @@ end
 
 local vStatus = createStatus("vStatus", "> [V] Fling Ready", Color3.fromRGB(255, 100, 100))
 local tStatus = createStatus("tStatus", "> [T] Magnet Ready", Color3.fromRGB(100, 200, 255))
-local cStatus = createStatus("cStatus", "> [G] Spawner Ready", Color3.fromRGB(150, 255, 100))
-local cTracker = createStatus("cTracker", "  Chairs Found: 0", Color3.fromRGB(255, 215, 0))
-
 
 --- STATE & LOGIC ---
-local state = { v = false, fling = false, t = false, c = false }
-local chairs = {}
+local state = { v = false, fling = false, t = false }
 
 rs.Heartbeat:Connect(function()
-	if state.t or state.fling or state.c then
+	if state.t or state.fling then
 		pcall(function()
 			settings().Physics.AllowSleep = false
 			if sethiddenproperty then sethiddenproperty(lp, "SimulationRadius", math.huge) end
@@ -152,42 +218,6 @@ local function getTarget(hrp)
 	return tgt
 end
 
-local function scanChairs()
-	chairs = {}
-	for _, o in pairs(workspace:GetDescendants()) do
-		if o:IsA("Seat") or o:IsA("VehicleSeat") then table.insert(chairs, o) end
-	end
-	cTracker.Text = "  Chairs Found: " .. #chairs
-end
-
-local function spawnChair()
-	if #chairs == 0 then return end
-	local char = lp.Character
-	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-	
-	local tgt = getTarget(char.HumanoidRootPart)
-	if not tgt then return end
-	
-	local tp = tgt:FindFirstChild("HumanoidRootPart") or tgt:FindFirstChild("Torso")
-	if not tp then return end
-	
-	local c = table.remove(chairs)
-	if c and c.Parent then
-		for _, f in pairs(c:GetChildren()) do
-			if f:IsA("BodyMover") or f:IsA("Constraint") or f:IsA("AlignPosition") or f:IsA("Torque") then f:Destroy() end
-		end
-		c.Anchored = false
-		c.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
-		c.CanCollide = false
-		c.CFrame = tp.CFrame
-		c.AssemblyLinearVelocity = Vector3.zero
-		c.AssemblyAngularVelocity = Vector3.zero
-		cTracker.Text = "  Chairs Found: " .. #chairs
-	else
-		spawnChair()
-	end
-end
-
 vBtn.MouseButton1Click:Connect(function()
 	state.v = not state.v
 	vStatus.Visible = state.v
@@ -200,12 +230,13 @@ tBtn.MouseButton1Click:Connect(function()
 	tBtn.BackgroundColor3 = state.t and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 end)
 
-cBtn.MouseButton1Click:Connect(function()
-	state.c = not state.c
-	cStatus.Visible = state.c
-	cTracker.Visible = state.c
-	cBtn.BackgroundColor3 = state.c and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-	if state.c then scanChairs() end
+iBtn.MouseButton1Click:Connect(function()
+	sideOpen = not sideOpen
+	sideMenu.Visible = sideOpen
+	iBtn.BackgroundColor3 = sideOpen and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+	if sideOpen then
+		refreshIntel()
+	end
 end)
 
 local function ghostFling()
@@ -255,16 +286,22 @@ end
 local function doMagnet()
 	local pos = mouse.Hit.Position
 	if not pos then return end
+	
+	local targetHeight = pos + Vector3.new(0, 4, 0)
+	
 	for _, o in pairs(workspace:GetDescendants()) do
 		if o:IsA("BasePart") and not o.Anchored then
 			local md = o:FindFirstAncestorOfClass("Model")
-			if md and md:FindFirstChildWhichIsA("Humanoid") then continue end
+			if md and (md:FindFirstChildWhichIsA("Humanoid") or o:FindFirstAncestorWhichIsA("Accessory") or o:FindFirstAncestorWhichIsA("Tool")) then continue end
+			
 			for _, f in pairs(o:GetChildren()) do
 				if f:IsA("BodyMover") or f:IsA("Constraint") or f:IsA("AlignPosition") or f:IsA("Torque") then f:Destroy() end
 			end
+			
 			o.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
 			o.CanCollide = false
-			o.CFrame = CFrame.new(pos + Vector3.new(math.random(-4,4), math.random(1,6), math.random(-4,4)))
+			
+			o.CFrame = CFrame.new(targetHeight + Vector3.new(math.random(-2,2), math.random(-1,2), math.random(-2,2)))
 			o.AssemblyLinearVelocity, o.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
 		end
 	end
@@ -273,8 +310,7 @@ end
 uis.InputBegan:Connect(function(k, p)
 	if p then return end
 	if state.v and k.KeyCode == Enum.KeyCode.V then ghostFling()
-	elseif state.t and k.KeyCode == Enum.KeyCode.T then doMagnet()
-	elseif state.c and k.KeyCode == Enum.KeyCode.G then spawnChair() end
+	elseif state.t and k.KeyCode == Enum.KeyCode.T then doMagnet() end
 end)
 
 --- DRAG LOGIC ---
