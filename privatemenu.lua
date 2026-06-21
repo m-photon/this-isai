@@ -20,30 +20,33 @@ mainFrame.Size = UDim2.new(0, 350, 0, 240)
 mainFrame.Position = UDim2.new(0.5, -175, 0.5, -120)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 0
+mainFrame.ZIndex = 1
 mainFrame.Parent = screenGui
 
--- Top Bar
+-- Top Drag Bar
 local dragBar = Instance.new("Frame")
 dragBar.Name = "DragBar"
 dragBar.Size = UDim2.new(1, 0, 0, 50)
 dragBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 dragBar.BorderSizePixel = 0
+dragBar.ZIndex = 2
 dragBar.Parent = mainFrame
 
--- Title text using image font style
+-- Title text (Fixed using RichText italics to prevent crashes)
 local titleText = Instance.new("TextLabel")
 titleText.Name = "TitleLabel"
 titleText.Size = UDim2.new(1, -20, 1, 0)
 titleText.Position = UDim2.new(0, 12, 0, 0)
 titleText.BackgroundTransparency = 1
 titleText.RichText = true 
-titleText.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
+titleText.Text = '<i><font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu</i>'
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextSize = 14
-titleText.Font = Enum.Font.GothamBoldItalic
+titleText.Font = Enum.Font.GothamBold
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.TextYAlignment = Enum.TextYAlignment.Center
 titleText.LineHeight = 1.1
+titleText.ZIndex = 3
 titleText.Parent = dragBar
 
 local contentFrame = Instance.new("Frame")
@@ -51,6 +54,7 @@ contentFrame.Name = "Content"
 contentFrame.Size = UDim2.new(1, -20, 1, -65)
 contentFrame.Position = UDim2.new(0, 10, 0, 60)
 contentFrame.BackgroundTransparency = 1
+contentFrame.ZIndex = 2
 contentFrame.Parent = mainFrame
 
 local listLayout = Instance.new("UIListLayout")
@@ -58,15 +62,18 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = contentFrame
 
--- Menu Button
+-- Menu Button (Fixed with RichText italics)
 local visorButton = Instance.new("TextButton")
 visorButton.Name = "VisorButton"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
 visorButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-visorButton.Text = "Visor"
+visorButton.BorderSizePixel = 0
+visorButton.RichText = true
+visorButton.Text = "<i>Visor</i>"
 visorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-visorButton.Font = Enum.Font.GothamBoldItalic
+visorButton.Font = Enum.Font.GothamBold
 visorButton.TextSize = 14
+visorButton.ZIndex = 3
 visorButton.Parent = contentFrame
 
 -- Status Box
@@ -77,16 +84,19 @@ visorMenu.Position = UDim2.new(0, 25, 1, -60)
 visorMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 visorMenu.BorderSizePixel = 0
 visorMenu.Visible = false
+visorMenu.ZIndex = 2
 visorMenu.Parent = screenGui
 
 local visorText = Instance.new("TextLabel")
 visorText.Name = "VisorText"
 visorText.Size = UDim2.new(1, 0, 1, 0)
 visorText.BackgroundTransparency = 1
-visorText.Text = "V=kill nearby"
+visorText.RichText = true
+visorText.Text = "<i>V=kill nearby</i>"
 visorText.TextColor3 = Color3.fromRGB(255, 75, 75)
-visorText.Font = Enum.Font.GothamItalic
+visorText.Font = Enum.Font.GothamBold
 visorText.TextSize = 14
+visorText.ZIndex = 3
 visorText.Parent = visorMenu
 
 local visorActive = false
@@ -131,7 +141,6 @@ local function fling()
 	
 	flinging = true
 	
-	-- Line-only SelectionBox completely bypasses default cyan box bugs
 	local selectionBox = Instance.new("SelectionBox")
 	selectionBox.Name = "VisorTargetOutline"
 	selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
@@ -147,7 +156,6 @@ local function fling()
 	local duration = 0.4
 	
 	local loop
-	-- Switched to Stepped to intercept and lock physics calculations before they run
 	loop = RunService.Stepped:Connect(function()
 		local elapsed = tick() - startTime
 		
@@ -157,7 +165,6 @@ local function fling()
 			
 			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
 			
-			-- Instantly kill velocities upon script release
 			hrp.AssemblyLinearVelocity = Vector3.zero
 			hrp.AssemblyAngularVelocity = Vector3.zero
 			
@@ -173,14 +180,11 @@ local function fling()
 			if part:IsA("BasePart") then part.CanCollide = false end
 		end
 		
-		-- Locks your actual physics position right onto the target frame
 		hrp.CFrame = targetPart.CFrame
 		
-		-- Combined extreme multi-axis vectors ensure an instant server-side physics explosion for the victim
 		hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
 		hrp.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
 		
-		-- Replicated Skybox Offset: Holds visual limbs 50,000 studs up out of render distance
 		rootJoint.C0 = CFrame.new(0, 50000, 0) * originalC0
 	end)
 end
@@ -192,7 +196,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
--- Dragging mechanics
+-- Dragging Engine
 local dragging, dragInput, dragStart, startPos
 
 dragBar.InputBegan:Connect(function(input)
