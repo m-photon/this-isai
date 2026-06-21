@@ -57,11 +57,11 @@ listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = contentFrame
 
 local visorButton = Instance.new("TextButton")
-visorButton.Name = "UN fling(might bug)"
+visorButton.Name = "VisorButton"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
 visorButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 visorButton.BorderSizePixel = 0
-visorButton.Text = "Visor"
+visorButton.Text = "UN fling(might bug)"
 visorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 visorButton.TextSize = 22
 visorButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
