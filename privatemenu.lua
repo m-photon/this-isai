@@ -13,7 +13,6 @@ screenGui.Name = "nos_dywll_PrivateMenu"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = targetParent
 
--- Main Window (Sharp Rectangular Style)
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 350, 0, 240)
@@ -22,7 +21,6 @@ mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
--- Top Drag Bar
 local dragBar = Instance.new("Frame")
 dragBar.Name = "DragBar"
 dragBar.Size = UDim2.new(1, 0, 0, 50)
@@ -30,7 +28,6 @@ dragBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 dragBar.BorderSizePixel = 0
 dragBar.Parent = mainFrame
 
--- Title Text (Reverted to original safe font)
 local titleText = Instance.new("TextLabel")
 titleText.Name = "TitleLabel"
 titleText.Size = UDim2.new(1, -20, 1, 0)
@@ -39,8 +36,9 @@ titleText.BackgroundTransparency = 1
 titleText.RichText = true 
 titleText.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleText.TextSize = 14
-titleText.Font = Enum.Font.GothamBold
+titleText.TextSize = 22
+-- Extracted directly from your script assets to fix the text presentation
+titleText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Italic)
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.TextYAlignment = Enum.TextYAlignment.Center
 titleText.LineHeight = 1.1
@@ -58,7 +56,6 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = contentFrame
 
--- Menu Button (Reverted to original safe font)
 local visorButton = Instance.new("TextButton")
 visorButton.Name = "VisorButton"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
@@ -66,11 +63,10 @@ visorButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 visorButton.BorderSizePixel = 0
 visorButton.Text = "Visor"
 visorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-visorButton.Font = Enum.Font.GothamBold
-visorButton.TextSize = 14
+visorButton.TextSize = 22
+visorButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 visorButton.Parent = contentFrame
 
--- Status Box
 local visorMenu = Instance.new("Frame")
 visorMenu.Name = "VisorMenu"
 visorMenu.Size = UDim2.new(0, 140, 0, 35)
@@ -86,8 +82,8 @@ visorText.Size = UDim2.new(1, 0, 1, 0)
 visorText.BackgroundTransparency = 1
 visorText.Text = "V=kill nearby"
 visorText.TextColor3 = Color3.fromRGB(255, 75, 75)
-visorText.Font = Enum.Font.GothamBold
-visorText.TextSize = 14
+visorText.TextSize = 20
+visorText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
 visorText.Parent = visorMenu
 
 local visorActive = false
@@ -173,8 +169,8 @@ local function fling()
 		
 		hrp.CFrame = targetPart.CFrame
 		
-		hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-		hrp.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+		hrp.AssemblyLinearVelocity = Vector3.zero
+		hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
 		
 		rootJoint.C0 = CFrame.new(0, 50000, 0) * originalC0
 	end)
@@ -187,7 +183,6 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
--- Dragging Engine
 local dragging, dragInput, dragStart, startPos
 
 dragBar.InputBegan:Connect(function(input)
