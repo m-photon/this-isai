@@ -144,7 +144,13 @@ layout.Padding = UDim.new(0, 6)
 layout.Parent = content
 
 --- STATE & LOGIC ---
-local state = { v = false, c = false, e = false, t = false, fling = false }
+-- Split states into menu selection (_enabled) and execution active (_active)
+local state = {
+	c_enabled = false, c_active = false,
+	e_enabled = false, e_active = false,
+	t_enabled = false, t_active = false,
+	v_enabled = false, fling = false
+}
 
 local function createBtn(name, text)
 	local btn = Instance.new("TextButton")
@@ -243,7 +249,7 @@ espFolder.Name = "nos_dywyll_ESP"
 espFolder.Parent = core
 
 local function updateESP()
-	if not state.e then
+	if not (state.e_enabled and state.e_active) then
 		espFolder:ClearAllChildren()
 		return
 	end
@@ -288,7 +294,7 @@ local function updateTracers()
 			end
 			
 			local line = tracers[p]
-			if state.t and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
+			if state.t_enabled and state.t_active and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
 				local vector, onScreen = cam:WorldToScreenPoint(p.Character.HumanoidRootPart.Position)
 				if onScreen then
 					line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y)
@@ -312,35 +318,51 @@ plrs.PlayerRemoving:Connect(function(p)
 end)
 
 rs.RenderStepped:Connect(function()
-	if state.e then
+	if state.e_enabled and state.e_active then
 		updateESP()
+	else
+		espFolder:ClearAllChildren()
 	end
 	updateTracers()
 end)
 
---- BUTTON CLICKS ---
-local function toggleSilentAim()
-	state.c = not state.c
-	cStatus.Visible = state.c
-	cBtn.BackgroundColor3 = state.c and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+--- MENU BUTTON TOGGLES ---
+local function toggleSilentAimMenu()
+	state.c_enabled = not state.c_enabled
+	if not state.c_enabled then
+		state.c_active = false
+		cStatus.Visible = false
+	end
+	cBtn.BackgroundColor3 = state.c_enabled and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 end
 
-local function toggleESP()
-	state.e = not state.e
-	eStatus.Visible = state.e
-	eBtn.BackgroundColor3 = state.e and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
-	if not state.e then updateESP() end
+local function toggleESPMenu()
+	state.e_enabled = not state.e_enabled
+	if not state.e_enabled then
+		state.e_active = false
+		eStatus.Visible = false
+		updateESP()
+	end
+	eBtn.BackgroundColor3 = state.e_enabled and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 end
 
-local function toggleTracers()
-	state.t = not state.t
-	tStatus.Visible = state.t
-	tBtn.BackgroundColor3 = state.t and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+local function toggleTracersMenu()
+	state.t_enabled = not state.t_enabled
+	if not state.t_enabled then
+		state.t_active = false
+		tStatus.Visible = false
+	end
+	tBtn.BackgroundColor3 = state.t_enabled and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 end
 
---- GHOST FLING ---
+local function toggleFlingMenu()
+	state.v_enabled = not state.v_enabled
+	vBtn.BackgroundColor3 = state.v_enabled and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+end
+
+--- GHOST FLING EXECUTION ---
 local function ghostFling()
-	if state.fling then return end
+	if not state.v_enabled or state.fling then return end
 	local char = lp.Character
 	if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChildWhichIsA("Humanoid") then return end
 	local hrp, hum = char.HumanoidRootPart, char:FindFirstChildWhichIsA("Humanoid")
@@ -367,7 +389,6 @@ local function ghostFling()
 	local start = tick()
 	local conn
 	conn = rs.Heartbeat:Connect(function()
-		-- Added presence validations to prevent game crashes if parts or targets go missing mid-fling
 		if tick() - start > 1.5 or not tp or not tp.Parent or not char or not hrp or not hum then
 			conn:Disconnect()
 			if bav and bav.Parent then bav:Destroy() end
@@ -396,10 +417,10 @@ local function ghostFling()
 	end)
 end
 
-cBtn.MouseButton1Click:Connect(toggleSilentAim)
-eBtn.MouseButton1Click:Connect(toggleESP)
-tBtn.MouseButton1Click:Connect(toggleTracers)
-vBtn.MouseButton1Click:Connect(ghostFling)
+cBtn.MouseButton1Click:Connect(toggleSilentAimMenu)
+eBtn.MouseButton1Click:Connect(toggleESPMenu)
+tBtn.MouseButton1Click:Connect(toggleTracersMenu)
+vBtn.MouseButton1Click:Connect(toggleFlingMenu)
 
 iBtn.MouseButton1Click:Connect(function()
 	sideOpen = not sideOpen
@@ -413,7 +434,7 @@ end)
 --- SILENT AIM FUNCTION HOOKS ---
 local oldRaycast
 oldRaycast = hookfunction(workspace.Raycast, newcclosure(function(self, origin, direction, params)
-	if state.c and not checkcaller() then
+	if state.c_enabled and state.c_active and not checkcaller() then
 		local closest = getClosestToCursor()
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			local targetPos = closest.Character.Head.Position
@@ -426,9 +447,8 @@ end))
 
 local oldFindPartOnRay
 oldFindPartOnRay = hookfunction(workspace.FindPartOnRay, newcclosure(function(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
-	if state.c and not checkcaller() then
+	if state.c_enabled and state.c_active and not checkcaller() then
 		local closest = getClosestToCursor()
-		-- FIXED TYPO HERE (Removed accidental "ImageLabel" string insertion)
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			local targetPos = closest.Character.Head.Position
 			local newRay = Ray.new(ray.Origin, (targetPos - ray.Origin).Unit * ray.Direction.Magnitude)
@@ -440,7 +460,7 @@ end))
 
 local oldFindPartOnRayWithIgnoreList
 oldFindPartOnRayWithIgnoreList = hookfunction(workspace.FindPartOnRayWithIgnoreList, newcclosure(function(self, ray, ignoreList, terrainCellsAreCubes, fractionMultiplier)
-	if state.c and not checkcaller() then
+	if state.c_enabled and state.c_active and not checkcaller() then
 		local closest = getClosestToCursor()
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			local targetPos = closest.Character.Head.Position
@@ -453,7 +473,7 @@ end))
 
 local oldIndex
 oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, idx)
-	if state.c and not checkcaller() and self == mouse then
+	if state.c_enabled and state.c_active and not checkcaller() and self == mouse then
 		local closest = getClosestToCursor()
 		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			if idx == "Hit" then
@@ -466,16 +486,30 @@ oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, idx)
 	return oldIndex(self, idx)
 end))
 
+--- KEYBIND INPUT LISTENER ---
 uis.InputBegan:Connect(function(k, p)
 	if p then return end
-	if k.KeyCode == Enum.KeyCode.V then
-		ghostFling()
-	elseif k.KeyCode == Enum.KeyCode.C then
-		toggleSilentAim()
+	
+	if k.KeyCode == Enum.KeyCode.C then
+		if state.c_enabled then
+			state.c_active = not state.c_active
+			cStatus.Visible = state.c_active
+		end
 	elseif k.KeyCode == Enum.KeyCode.E then
-		toggleESP()
+		if state.e_enabled then
+			state.e_active = not state.e_active
+			eStatus.Visible = state.e_active
+			if not state.e_active then updateESP() end
+		end
 	elseif k.KeyCode == Enum.KeyCode.T then
-		toggleTracers()
+		if state.t_enabled then
+			state.t_active = not state.t_active
+			tStatus.Visible = state.t_active
+		end
+	elseif k.KeyCode == Enum.KeyCode.V then
+		if state.v_enabled then
+			ghostFling()
+		end
 	end
 end)
 
