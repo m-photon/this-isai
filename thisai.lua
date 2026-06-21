@@ -1,8 +1,3 @@
--- =======================================================================
--- PRIVATE FE ANIMATIONS GUI WITH CUSTOM INSPECT ANIMATION
--- PASTE THIS ENTIRE BLOCK AT THE VERY BOTTOM OF YOUR MAIN REANIMATION SCRIPT
--- =======================================================================
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -222,22 +217,43 @@ end)
 
 -- === ANIMATION INTEGRATION LOGIC ===
 inspectorBtn.MouseButton1Click:Connect(function()
-    -- This requires reanimated, ATTACK, Animation_Speed, Swait, Clerp, RightShoulder, LeftShoulder, RIGHTSHOULDERC0, and LEFTSHOULDERC0
-    -- to be active and defined in your main script's global environment.
-    if reanimated == true and ATTACK == false then
-        coroutine.resume(coroutine.create(function()
-            ATTACK = true
-            Rooted = true
+    local char = player.Character
+    if not char then return end
+    
+    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+    if not torso then return end
+
+    -- Locate shoulder joints automatically based on R6 / R15 avatar type
+    local rShoulder = torso:FindFirstChild("Right Shoulder") or char:FindFirstChild("RightShoulder") or (char:FindFirstChild("RightUpperArm") and char.RightUpperArm:FindFirstChild("RightShoulder"))
+    local lShoulder = torso:FindFirstChild("Left Shoulder") or char:FindFirstChild("LeftShoulder") or (char:FindFirstChild("LeftUpperArm") and char.LeftUpperArm:FindFirstChild("LeftShoulder"))
+    
+    if rShoulder and lShoulder then
+        -- Direct assignment loop bypassing main script globals entirely
+        task.spawn(function()
+            -- Force flag updates locally if they exist in scope
+            if ATTACK ~= nil then ATTACK = true end
+            if Rooted ~= nil then Rooted = true end
             
-            -- Moves hands neatly behind the back into a locked/clasped inspecting stance
-            for i = 0, 2, 0.1 / Animation_Speed do
-                Swait()
-                RightShoulder.C0 = Clerp(RightShoulder.C0, CFrame.new(1.0, 0, 0.7) * CFrame.Angles(math.rad(-45), 0, math.rad(-45)) * RIGHTSHOULDERC0, 1 / Animation_Speed)
-                LeftShoulder.C0 = Clerp(LeftShoulder.C0, CFrame.new(-1.0, 0, 0.7) * CFrame.Angles(math.rad(-45), 0, math.rad(45)) * LEFTSHOULDERC0, 1 / Animation_Speed)
+            -- Smooth transition loop
+            for step = 1, 20 do
+                if Clerp then
+                    -- If the main script's Clerp is available, utilize it smoothly
+                    rShoulder.C0 = Clerp(rShoulder.C0, CFrame.new(1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(-30)), 0.3)
+                    lShoulder.C0 = Clerp(lShoulder.C0, CFrame.new(-1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(30)), 0.3)
+                else
+                    -- Direct Lerp fallback if executed independently
+                    rShoulder.C0 = rShoulder.C0:Lerp(CFrame.new(1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(-30)), 0.3)
+                    lShoulder.C0 = lShoulder.C0:Lerp(CFrame.new(-1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(30)), 0.3)
+                end
+                if Swait then Swait() else task.wait(0.03) end
             end
             
-            ATTACK = false
-            Rooted = false
-        end))
+            -- Lock position directly to prevent internal animations from resetting the arms immediately
+            while true do
+                rShoulder.C0 = CFrame.new(1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(-30))
+                lShoulder.C0 = CFrame.new(-1.0, -0.2, 0.6) * CFrame.Angles(math.rad(-45), 0, math.rad(30))
+                task.wait()
+            end
+        end)
     end
 end)
