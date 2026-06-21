@@ -28,7 +28,7 @@ screenGui.Parent = targetParent
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 350, 0, 240)
-mainFrame.Position = UDim2.new(0.5, -175, 0.5, -120) -- Center of screen
+mainFrame.Position = UDim2.new(0.5, -175, 0.5, -120)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
@@ -41,7 +41,7 @@ frameCorner.Parent = mainFrame
 local dragBar = Instance.new("Frame")
 dragBar.Name = "DragBar"
 dragBar.Size = UDim2.new(1, 0, 0, 50)
-dragBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45) -- Sleek grey
+dragBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 dragBar.BorderSizePixel = 0
 dragBar.Parent = mainFrame
 
@@ -118,7 +118,7 @@ visorText.Parent = visorMenu
 
 
 ----------------------------------------------------------------
--- VISOR DETACHED REMOTE FLING SYSTEM
+-- VISOR DETACHED 3X3 PROXY BLOCK FLING SYSTEM
 ----------------------------------------------------------------
 
 local visorActive = false
@@ -168,16 +168,26 @@ local function flingNearestPlayer()
 	
 	flinging = true
 	
-	-- 1. Save original position to return to later
+	-- 1. Create the physical 3x3 Neon Block right where you are standing
+	local proxyBlock = Instance.new("Part")
+	proxyBlock.Size = Vector3.new(3, 3, 3)
+	proxyBlock.Color = Color3.fromRGB(0, 255, 255) -- Cyan box color from your script
+	proxyBlock.Material = Enum.Material.Neon
+	proxyBlock.CanCollide = false
+	proxyBlock.Anchored = true -- Handled via scripting positions to look perfectly smooth
+	proxyBlock.CFrame = hrp.CFrame
+	proxyBlock.Parent = workspace
+	
+	-- 2. Save original position to return to later
 	local savedCFrame = hrp.CFrame
 	
-	-- 2. Find and track your RootJoint motor (Handles R6 & R15 compatibility)
+	-- 3. Find and track your Joint motor (Handles R6 & R15 compatibility)
 	local rootJoint = hrp:FindFirstChild("RootJoint")
 	if not rootJoint and char:FindFirstChild("LowerTorso") then
 		rootJoint = char.LowerTorso:FindFirstChild("Root")
 	end
 	
-	-- 3. Freeze your visible body parts locally so you stand perfectly still
+	-- 4. Temporarily anchor your visible body parts so your body stays completely behind
 	local oldCollisions = {}
 	local anchoredParts = {}
 	for _, part in pairs(char:GetChildren()) do
@@ -186,15 +196,15 @@ local function flingNearestPlayer()
 			part.CanCollide = false
 			if part ~= hrp then
 				anchoredParts[part] = part.Anchored
-				part.Anchored = true -- Locks legs/torso/head in place
+				part.Anchored = true
 			end
 		end
 	end
 	
-	-- 4. Detach the HumanoidRootPart completely from the body structure
+	-- 5. Disconnect the HumanoidRootPart joint invisibly
 	if rootJoint then rootJoint.Enabled = false end
 	
-	-- 5. Inject your script's hyper-spin velocity configurations
+	-- 6. Inject your script's exact hyper-spin velocity configurations onto your invisible HumanoidRootPart
 	local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
 	bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 	bodyAngularVelocity.P = 1000000000000000000000000000
@@ -202,22 +212,26 @@ local function flingNearestPlayer()
 	bodyAngularVelocity.Parent = hrp
 	
 	local startTime = tick()
-	local flingDuration = 1.5 -- Fling tracking loop length
+	local travelDuration = 0.3 -- Time it takes for the 3x3 block to travel over to the target player
+	local totalDuration = 1.6  -- Total loop duration (travel time + smash time)
 	
 	local connection
 	connection = RunService.Heartbeat:Connect(function()
-		-- Cleanup condition if timer finishes or target leaves
-		if tick() - startTime > flingDuration or not targetPart or not targetPart.Parent or not char or not hrp then
+		local elapsed = tick() - startTime
+		
+		-- Cleanup condition
+		if elapsed > totalDuration or not targetPart or not targetPart.Parent or not char or not hrp then
 			
-			-- Remove forces
+			-- Destroy proxy block and forces
+			proxyBlock:Destroy()
 			bodyAngularVelocity:Destroy()
 			
-			-- Teleport the RootPart back home and re-weld it to your frozen body
+			-- Teleport your hidden physics root back and weld your character back together seamlessly
 			hrp.CFrame = savedCFrame
 			hrp.Velocity = Vector3.new(0, 0, 0)
 			if rootJoint then rootJoint.Enabled = true end
 			
-			-- Unanchor your body parts and restore physics seamlessly
+			-- Restore normal character structures
 			for part, wasAnchored in pairs(anchoredParts) do
 				if part and part.Parent then part.Anchored = wasAnchored end
 			end
@@ -230,9 +244,23 @@ local function flingNearestPlayer()
 			return
 		end
 		
-		-- Aggressively loop the detached RootPart to the target's exact vector space
-		hrp.CFrame = CFrame.new(targetPart.Position + Vector3.new(0, 0.1, 0))
-		hrp.Velocity = Vector3.new(70, 70, 70) -- Glitches game physics engine to register impact instantly
+		-- Target Position Vector
+		local destination = targetPart.Position
+		local currentPos
+		
+		if elapsed < travelDuration then
+			-- PHASE 1: Smoothly fly out from your body and travel over to the target player
+			local alpha = elapsed / travelDuration
+			currentPos = savedCFrame.Position:Lerp(destination, alpha)
+		else
+			-- PHASE 2: Lock onto the target aggressively to perform the physics crush fling
+			currentPos = destination + Vector3.new(0, 0.1, 0)
+		end
+		
+		-- Align both the visible 3x3 Block and your invisible spinning root together
+		proxyBlock.CFrame = CFrame.new(currentPos)
+		hrp.CFrame = CFrame.new(currentPos)
+		hrp.Velocity = Vector3.new(75, 75, 75) -- Glitches physics weights to force the fling
 	end)
 end
 
