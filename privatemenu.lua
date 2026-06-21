@@ -6,8 +6,12 @@ local localPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local targetParent = pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or localPlayer:WaitForChild("PlayerGui")
 
-local oldGui = targetParent:FindFirstChild("nos_dywll_PrivateMenu")
-if oldGui then oldGui:Destroy() end
+-- Forcefully delete any existing menus to prevent old ones from getting stuck
+for _, gui in pairs(targetParent:GetChildren()) do
+	if gui.Name == "nos_dywll_PrivateMenu" then
+		gui:Destroy()
+	end
+end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "nos_dywll_PrivateMenu"
@@ -56,6 +60,7 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = contentFrame
 
+-- BUTTON TEXT IS SET HERE
 local visorButton = Instance.new("TextButton")
 visorButton.Name = "VisorButton"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
@@ -80,7 +85,7 @@ local visorText = Instance.new("TextLabel")
 visorText.Name = "VisorText"
 visorText.Size = UDim2.new(1, 0, 1, 0)
 visorText.BackgroundTransparency = 1
-visorText.Text = "V=Ghost Fling"
+visorText.Text = "V=UN fling"
 visorText.TextColor3 = Color3.fromRGB(255, 75, 75)
 visorText.TextSize = 20
 visorText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
