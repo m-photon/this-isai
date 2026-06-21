@@ -16,8 +16,8 @@ sg.Parent = core
 
 --- MAIN MENU ---
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 350, 0, 240)
-main.Position = UDim2.new(0.5, -175, 0.5, -120)
+main.Size = UDim2.new(0, 350, 0, 280) -- Expanded to fit 5 buttons
+main.Position = UDim2.new(0.5, -175, 0.5, -140)
 main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 main.BorderSizePixel = 0
 main.Parent = sg
@@ -140,14 +140,14 @@ local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 6)
 layout.Parent = content
 
---- STATE & LOGIC (EVERYTHING OFF BY DEFAULT) ---
-local state = { v = false, fling = false, t = false }
+--- STATE & LOGIC ---
+local state = { v = false, c = false, e = false, t = false, fling = false }
 
 local function createBtn(name, text)
 	local btn = Instance.new("TextButton")
 	btn.Name = name
 	btn.Size = UDim2.new(1, 0, 0, 36)
-	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Off by default
+	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	btn.BorderSizePixel = 0
 	btn.Text = text
 	btn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -163,8 +163,10 @@ local function createBtn(name, text)
 	return btn
 end
 
+local cBtn = createBtn("cBtn", "Silent Aim [C]")
+local eBtn = createBtn("eBtn", "Player ESP [E]")
+local tBtn = createBtn("tBtn", "Tracers [T]")
 local vBtn = createBtn("vBtn", "UN Fling [V]")
-local tBtn = createBtn("tBtn", "Item Magnet [T]")
 local iBtn = createBtn("iBtn", "Server Intel")
 
 --- CLEAN STATUS HUD ---
@@ -190,13 +192,15 @@ local function createStatus(name, text, color)
 	lbl.Font = Enum.Font.Code
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.TextStrokeTransparency = 0.2
-	lbl.Visible = false -- Off by default
+	lbl.Visible = false
 	lbl.Parent = hud
 	return lbl
 end
 
+local cStatus = createStatus("cStatus", "> [C] Silent Aim Active", Color3.fromRGB(100, 255, 100))
+local eStatus = createStatus("eStatus", "> [E] Player ESP Active", Color3.fromRGB(100, 200, 255))
+local tStatus = createStatus("tStatus", "> [T] Tracers Active", Color3.fromRGB(255, 150, 50))
 local vStatus = createStatus("vStatus", "> [V] Fling Ready", Color3.fromRGB(255, 100, 100))
-local tStatus = createStatus("tStatus", "> [T] Magnet Ready", Color3.fromRGB(100, 200, 255))
 
 --- FUNCTIONS ---
 local function getTarget(hrp)
@@ -210,17 +214,125 @@ local function getTarget(hrp)
 	return tgt
 end
 
+local function getClosestToCursor()
+	local closestDist = math.huge
+	local closestPlr = nil
+	local mousePos = uis:GetMouseLocation()
+	
+	for _, p in pairs(plrs:GetPlayers()) do
+		if p ~= lp and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
+			local vector, onScreen = cam:WorldToViewportPoint(p.Character.Head.Position)
+			if onScreen then
+				local dist = (Vector2.new(vector.X, vector.Y) - mousePos).Magnitude
+				if dist < closestDist then
+					closestDist = dist
+					closestPlr = p
+				end
+			end
+		end
+	end
+	return closestPlr
+end
+
+--- ESP LOGIC ---
+local espFolder = Instance.new("Folder")
+espFolder.Name = "nos_dywyll_ESP"
+espFolder.Parent = core
+
+local function updateESP()
+	if not state.e then
+		espFolder:ClearAllChildren()
+		return
+	end
+	
+	for _, p in pairs(plrs:GetPlayers()) do
+		if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			if not espFolder:FindFirstChild(p.Name) then
+				local hl = Instance.new("Highlight")
+				hl.Name = p.Name
+				hl.Adornee = p.Character
+				hl.FillColor = Color3.fromRGB(255, 50, 50)
+				hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+				hl.FillTransparency = 0.6
+				hl.OutlineTransparency = 0.2
+				hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				hl.Parent = espFolder
+			else
+				espFolder[p.Name].Adornee = p.Character
+			end
+		end
+	end
+end
+
+--- TRACERS LOGIC ---
+local tracers = {}
+local function updateTracers()
+	for _, p in pairs(plrs:GetPlayers()) do
+		if p ~= lp then
+			if not tracers[p] then
+				local line = Drawing.new("Line")
+				line.Visible = false
+				line.Color = Color3.fromRGB(255, 50, 50)
+				line.Thickness = 1
+				line.Transparency = 1
+				tracers[p] = line
+			end
+			
+			local line = tracers[p]
+			if state.t and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildWhichIsA("Humanoid") and p.Character:FindFirstChildWhichIsA("Humanoid").Health > 0 then
+				local vector, onScreen = cam:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+				if onScreen then
+					line.From = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y) -- Originates from bottom center
+					line.To = Vector2.new(vector.X, vector.Y)
+					line.Visible = true
+				else
+					line.Visible = false
+				end
+			else
+				line.Visible = false
+			end
+		end
+	end
+end
+
+plrs.PlayerRemoving:Connect(function(p)
+	if tracers[p] then
+		tracers[p]:Remove()
+		tracers[p] = nil
+	end
+end)
+
+rs.RenderStepped:Connect(function()
+	if state.e then
+		updateESP()
+	end
+	updateTracers()
+end)
+
 --- BUTTON CLICKS ---
-vBtn.MouseButton1Click:Connect(function()
-	state.v = not state.v
-	vStatus.Visible = state.v
-	vBtn.BackgroundColor3 = state.v and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+cBtn.MouseButton1Click:Connect(function()
+	state.c = not state.c
+	cStatus.Visible = state.c
+	cBtn.BackgroundColor3 = state.c and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+end)
+
+eBtn.MouseButton1Click:Connect(function()
+	state.e = not state.e
+	eStatus.Visible = state.e
+	eBtn.BackgroundColor3 = state.e and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+	if not state.e then updateESP() end
 end)
 
 tBtn.MouseButton1Click:Connect(function()
 	state.t = not state.t
 	tStatus.Visible = state.t
 	tBtn.BackgroundColor3 = state.t and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+end)
+
+vBtn.MouseButton1Click:Connect(function()
+	state.v = not state.v
+	vStatus.Visible = state.v
+	vBtn.BackgroundColor3 = state.v and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 end)
 
 iBtn.MouseButton1Click:Connect(function()
@@ -277,31 +389,50 @@ local function ghostFling()
 	end)
 end
 
---- THE ORIGINAL STABLE MAGNET ---
-local function doMagnet()
-	local targetPos = mouse.Hit.Position
-	if not targetPos then return end
+--- SILENT AIM HOOK ---
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+	local method = getnamecallmethod()
+	local args = {...}
 	
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("BasePart") and not obj.Anchored then
-			local parentModel = obj:FindFirstAncestorOfClass("Model")
-			if parentModel and parentModel:FindFirstChildWhichIsA("Humanoid") then
-				continue
+	if state.c and not checkcaller() and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay" or method == "Raycast") then
+		local closest = getClosestToCursor()
+		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
+			local origin = method == "Raycast" and args[1] or args[1].Origin
+			local targetPos = closest.Character.Head.Position
+			local direction = (targetPos - origin).Unit * 1000
+			
+			if method == "Raycast" then
+				args[2] = direction
+			else
+				args[1] = Ray.new(origin, direction)
 			end
 			
-			local randomOffset = Vector3.new(math.random(-4, 4), math.random(1, 6), math.random(-4, 4))
-			obj.CFrame = CFrame.new(targetPos + randomOffset)
-			
-			obj.AssemblyLinearVelocity = Vector3.zero
-			obj.AssemblyAngularVelocity = Vector3.zero
+			return oldNamecall(self, unpack(args))
 		end
 	end
-end
+	
+	return oldNamecall(self, ...)
+end))
 
 uis.InputBegan:Connect(function(k, p)
 	if p then return end
-	if state.v and k.KeyCode == Enum.KeyCode.V then ghostFling()
-	elseif state.t and k.KeyCode == Enum.KeyCode.T then doMagnet() end
+	if k.KeyCode == Enum.KeyCode.V and state.v then 
+		ghostFling() 
+	elseif k.KeyCode == Enum.KeyCode.C then
+		state.c = not state.c
+		cStatus.Visible = state.c
+		cBtn.BackgroundColor3 = state.c and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+	elseif k.KeyCode == Enum.KeyCode.E then
+		state.e = not state.e
+		eStatus.Visible = state.e
+		eBtn.BackgroundColor3 = state.e and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+		if not state.e then updateESP() end
+	elseif k.KeyCode == Enum.KeyCode.T then
+		state.t = not state.t
+		tStatus.Visible = state.t
+		tBtn.BackgroundColor3 = state.t and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+	end
 end)
 
 --- DRAG LOGIC ---
