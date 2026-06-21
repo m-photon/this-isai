@@ -142,26 +142,20 @@ local function fling()
 	
 	flinging = true
 	
+	-- Line-only selection box replaces the broken cyan highlight completely
 	local selectionBox = Instance.new("SelectionBox")
 	selectionBox.Name = "VisorTargetOutline"
 	selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
-	selectionBox.LineThickness = 0.04
+	selectionBox.LineThickness = 0.05
 	selectionBox.Adornee = targetChar
 	selectionBox.Parent = targetChar
 	
-	local camera = workspace.CurrentCamera
 	local savedCFrame = hrp.CFrame
 	local rootJoint = hrp:FindFirstChild("RootJoint") or char:FindFirstChild("RootJoint", true) or (char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root"))
 	local originalC0 = rootJoint and rootJoint.C0
 	
-	local spin = Instance.new("BodyAngularVelocity")
-	spin.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-	spin.AngularVelocity = Vector3.new(99999, 99999, 99999)
-	spin.Parent = hrp
-	
 	local startTime = tick()
-	local travelTime = 0.1
-	local duration = 0.35
+	local duration = 0.4
 	
 	local loop
 	loop = RunService.Heartbeat:Connect(function()
@@ -169,18 +163,13 @@ local function fling()
 		
 		if elapsed > duration or not targetPart or not targetPart.Parent or not char or not hrp or not rootJoint then
 			loop:Disconnect()
-			
-			if spin then spin:Destroy() end
 			if selectionBox then selectionBox:Destroy() end
 			
 			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
 			
-			pcall(function()
-				hrp.AssemblyLinearVelocity = humanoid.MoveDirection * humanoid.WalkSpeed
-				hrp.AssemblyAngularVelocity = Vector3.zero
-			end)
-			
-			if camera and humanoid then camera.CameraSubject = humanoid end
+			-- Hard cut all directional/angular vectors to eliminate self-flinging completely
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.AssemblyAngularVelocity = Vector3.zero
 			
 			humanoid.PlatformStand = false
 			humanoid:ChangeState(Enum.HumanoidStateType.Running)
@@ -188,27 +177,21 @@ local function fling()
 			return
 		end
 		
-		-- Kill all internal humanoid force calculations to prevent self-flinging
 		humanoid.PlatformStand = true
-		humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 		
 		for _, part in pairs(char:GetDescendants()) do
 			if part:IsA("BasePart") then part.CanCollide = false end
 		end
 		
-		local targetPos = targetPart.Position
-		local currentPos = elapsed < travelTime and savedCFrame.Position:Lerp(targetPos, elapsed / travelTime) or targetPos
+		-- Track positions directly 
+		hrp.CFrame = targetPart.CFrame
 		
-		-- Precision sub-pixel jitter loop prevents structural overlap lockups
-		local jitterX = math.sin(tick() * 200) * 0.08
-		local jitterZ = math.cos(tick() * 200) * 0.08
-		hrp.CFrame = CFrame.new(currentPos + Vector3.new(jitterX, 0.05, jitterZ)) * savedCFrame.Rotation
+		-- Pure spinning force flings targets on contact without giving you linear velocity
+		hrp.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+		hrp.AssemblyLinearVelocity = Vector3.zero
 		
-		pcall(function()
-			hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-		end)
-		
-		rootJoint.C0 = CFrame.new(0, 2000, 0) * originalC0
+		-- Sends visual limbs 50,000 studs out of bounds so you are 100% invisible to the server
+		rootJoint.C0 = CFrame.new(0, 50000, 0) * originalC0
 	end)
 end
 
