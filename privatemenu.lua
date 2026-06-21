@@ -143,18 +143,15 @@ local function fling()
 	flinging = true
 	humanoid.PlatformStand = true
 	
+	-- Replaced completely with SelectionBox to eliminate the cyan box bug permanently
+	local selectionBox = Instance.new("SelectionBox")
+	selectionBox.Name = "VisorTargetOutline"
+	selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
+	selectionBox.LineThickness = 0.05
+	selectionBox.Adornee = targetChar
+	selectionBox.Parent = targetChar
+	
 	local camera = workspace.CurrentCamera
-	
-	-- Highlight fix: Parented to Camera to destroy the engine's default cyan box bug
-	local hl = Instance.new("Highlight")
-	hl.Name = "VisorTargetHighlight"
-	hl.FillColor = Color3.fromRGB(255, 0, 0)
-	hl.OutlineColor = Color3.fromRGB(255, 0, 0)
-	hl.FillTransparency = 1
-	hl.OutlineTransparency = 0
-	hl.Adornee = targetChar
-	hl.Parent = camera
-	
 	local savedCFrame = hrp.CFrame
 	local rootJoint = hrp:FindFirstChild("RootJoint") or char:FindFirstChild("RootJoint", true) or (char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root"))
 	local originalC0 = rootJoint and rootJoint.C0
@@ -163,31 +160,22 @@ local function fling()
 	local travelTime = 0.1
 	local duration = 0.35
 	
-	local function resetPhysics()
-		if not char then return end
-		for _, part in pairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				pcall(function()
-					part.Velocity = Vector3.zero
-					part.RotVelocity = Vector3.zero
-					part.AssemblyLinearVelocity = Vector3.zero
-					part.AssemblyAngularVelocity = Vector3.zero
-				end)
-			end
-		end
-	end
-	
 	local loop
 	loop = RunService.Heartbeat:Connect(function()
 		local elapsed = tick() - startTime
 		
 		if elapsed > duration or not targetPart or not targetPart.Parent or not char or not hrp or not rootJoint then
 			loop:Disconnect()
-			if hl then hl:Destroy() end
+			if selectionBox then selectionBox:Destroy() end
 			
 			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
 			
-			resetPhysics()
+			-- Hand off velocity seamlessly to your current movement direction so you don't freeze in place
+			pcall(function()
+				hrp.AssemblyLinearVelocity = humanoid.MoveDirection * humanoid.WalkSpeed
+				hrp.AssemblyAngularVelocity = Vector3.zero
+			end)
+			
 			if camera and humanoid then camera.CameraSubject = humanoid end
 			
 			humanoid.PlatformStand = false
