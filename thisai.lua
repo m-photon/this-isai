@@ -1,10 +1,87 @@
+-- =======================================================================
+-- NOS_DYWLL'S UNIFIED FE REANIMATION & PRIVATE ANIMATIONS SCRIPT
+-- =======================================================================
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local torso = char:WaitForChild("Torso")
+local rootPart = char:WaitForChild("HumanoidRootPart")
 
--- High-compatibility GUI parenting for Xeno
+-- =======================================================================
+-- PART 1: THE FE REANIMATION & ANIMATION CORE ENGINE
+-- =======================================================================
+local reanimated = true
+local ATTACK = false
+local Rooted = false
+local Animation_Speed = 2
+local SINE = 0
+
+-- Grab original motor joints
+local RootJoint = rootPart:WaitForChild("Root Joint")
+local Neck = torso:WaitForChild("Neck")
+local RightShoulder = torso:WaitForChild("Right Shoulder")
+local LeftShoulder = torso:WaitForChild("Left Shoulder")
+local RightHip = torso:WaitForChild("Right Hip")
+local LeftHip = torso:WaitForChild("Left Hip")
+
+-- Store original math bases
+local ROOTC0 = RootJoint.C0
+local NECKC0 = Neck.C0
+local RIGHTSHOULDERC0 = RightShoulder.C0
+local LEFTSHOULDERC0 = LeftShoulder.C0
+local RIGHTHIPC0 = RightHip.C0
+local LEFTHIPC0 = LeftHip.C0
+
+-- Custom Animation Engine Utilities
+local function Swait()
+    RunService.Heartbeat:Wait()
+end
+
+local function Clerp(a, b, t)
+    return a:Lerp(b, t)
+end
+
+-- Netless Physics Loop (Claims server ownership of your character's limbs)
+task.spawn(function()
+    while runService and char:IsDescendantOf(workspace) do
+        RunService.Heartbeat:Wait()
+        settings().Physics.AllowSleep = false
+        player.MaximumSimulationRadius = math.huge
+        setsimulationradius(math.huge)
+        
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Velocity = Vector3.new(0, -30, 0) -- Forces network ownership replication
+            end
+        end
+    end
+end)
+
+-- Passive Character Stance Loop (Gives you a subtle breathing idle when not animating)
+task.spawn(function()
+    while reanimated and char:IsDescendantOf(workspace) do
+        Swait()
+        if not ATTACK then
+            SINE = SINE + 1
+            -- Subtle breathing movements
+            RootJoint.C0 = Clerp(RootJoint.C0, ROOTC0 * CFrame.new(0, 0, 0.05 * math.cos(SINE / 12)) * CFrame.Angles(0, 0, 0), 0.1)
+            Neck.C0 = Clerp(Neck.C0, NECKC0 * CFrame.Angles(math.rad(2 * math.sin(SINE / 12)), 0, 0), 0.1)
+            RightShoulder.C0 = Clerp(RightShoulder.C0, RIGHTSHOULDERC0 * CFrame.new(0, 0.02 * math.sin(SINE / 12), 0) * CFrame.Angles(0, 0, math.rad(1 * math.sin(SINE / 12))), 0.1)
+            LeftShoulder.C0 = Clerp(LeftShoulder.C0, LEFTSHOULDERC0 * CFrame.new(0, 0.02 * math.sin(SINE / 12), 0) * CFrame.Angles(0, 0, math.rad(-1 * math.sin(SINE / 12))), 0.1)
+            RightHip.C0 = Clerp(RightHip.C0, RIGHTHIPC0 * CFrame.new(0, -0.02 * math.cos(SINE / 12), 0), 0.1)
+            LeftHip.C0 = Clerp(LeftHip.C0, LEFTHIPC0 * CFrame.new(0, -0.02 * math.cos(SINE / 12), 0), 0.1)
+        end
+    end
+end)
+
+
+-- =======================================================================
+-- PART 2: THE STUDIO UI GRAPHICS INTERFACE
+-- =======================================================================
 local guiParent
 local success, result = pcall(function() return gethui() end)
 if success and result then
@@ -18,23 +95,20 @@ else
     end
 end
 
--- Define colors
+-- Theme setup
 local themeColor = Color3.fromRGB(0, 255, 120) 
 local grayColor = Color3.fromRGB(100, 100, 100)
 
--- Prevent duplicate GUIs
 if guiParent:FindFirstChild("PrivateAnimationsGui") then
     guiParent.PrivateAnimationsGui:Destroy()
 end
 
--- Create the main ScreenGui
 local mainGui = Instance.new("ScreenGui")
 mainGui.Name = "PrivateAnimationsGui"
 mainGui.ResetOnSpawn = false
 mainGui.IgnoreGuiInset = true
 mainGui.Parent = guiParent
 
--- Create the Main Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 500, 0, 300)
@@ -49,7 +123,6 @@ local frameCorner = Instance.new("UICorner")
 frameCorner.CornerRadius = UDim.new(0, 8)
 frameCorner.Parent = mainFrame
 
--- Create the Top Bar/Title
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "Title"
 titleLabel.Size = UDim2.new(1, 0, 0, 35)
@@ -62,7 +135,7 @@ titleLabel.TextColor3 = themeColor
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = mainFrame
 
--- === CLOSE BUTTON ===
+-- Close button
 local closeButton = Instance.new("TextButton")
 closeButton.Name = "CloseButton"
 closeButton.Size = UDim2.new(0, 30, 0, 25)
@@ -88,12 +161,11 @@ closeButton.MouseLeave:Connect(function()
     closeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     closeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
 end)
-
 closeButton.MouseButton1Click:Connect(function()
     mainGui:Destroy()
 end)
 
--- === SPINNING DIAMOND ===
+-- Spinning central background diamond
 local diamond = Instance.new("Frame")
 diamond.Name = "SpinningDiamond"
 diamond.Size = UDim2.new(0, 120, 0, 120)
@@ -116,7 +188,6 @@ task.spawn(function()
     end
 end)
 
--- Create a ScrollingFrame to hold the buttons
 local buttonContainer = Instance.new("ScrollingFrame")
 buttonContainer.Name = "ButtonContainer"
 buttonContainer.Size = UDim2.new(1, -20, 1, -55)
@@ -144,7 +215,6 @@ padding.PaddingTop = UDim.new(0, 10)
 padding.PaddingLeft = UDim.new(0, 10)
 padding.Parent = buttonContainer
 
--- Helper function to make styled buttons
 local function createStyledButton(name, text, parent)
     local btn = Instance.new("TextButton")
     btn.Name = name
@@ -171,7 +241,7 @@ local function createStyledButton(name, text, parent)
     return btn
 end
 
--- === CREATE BUTTONS ===
+-- Populate Grid
 local inspectorBtn = createStyledButton("InspectorButton", "Inspector", buttonContainer)
 
 for i = 1, 14 do
@@ -182,9 +252,8 @@ gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     buttonContainer.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- Make the GUI Draggable
+-- Dragging Handler
 local dragging, dragInput, dragStart, startPos
-
 local function update(input)
     local delta = input.Position - dragStart
     mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -216,77 +285,43 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 
--- === STANDALONE FE ANIMATION & NETLESS REPLICATION ENGINE ===
+-- =======================================================================
+-- PART 3: TOGGLE HANDLER & FE REPLICATION CONNECTORS
+-- =======================================================================
 local inspecting = false
-local loopConnection = nil
-
--- Velocity vectors used to force network replication to the server
-local netVelocity = Vector3.new(0, 30, 0)
-
--- Strict R6 Behind-the-back coordinates relative to the Torso center point
-local targetRightOffset = CFrame.new(0.35, -0.2, 0.55) * CFrame.Angles(math.rad(-45), math.rad(-15), math.rad(-20))
-local targetLeftOffset = CFrame.new(-0.35, -0.2, 0.55) * CFrame.Angles(math.rad(-45), math.rad(15), math.rad(20))
 
 inspectorBtn.MouseButton1Click:Connect(function()
     inspecting = not inspecting
     
-    local char = player.Character
-    local torso = char and char:FindFirstChild("Torso")
-    local rArm = char and char:FindFirstChild("Right Arm")
-    local lArm = char and char:FindFirstChild("Left Arm")
-    
-    if not torso or not rArm or not lArm then
-        inspecting = false
-        warn("FE Animation Failed: Character parts missing. Ensure you are using an R6 avatar.")
-        return
-    end
-
-    local rShoulder = torso:FindFirstChild("Right Shoulder")
-    local lShoulder = torso:FindFirstChild("Left Shoulder")
-
     if inspecting then
         inspectorBtn.Text = "Inspecting..."
         inspectorBtn.TextColor3 = Color3.fromRGB(255, 255, 0)
         inspectorBtn.BorderColor3 = Color3.fromRGB(255, 255, 0)
         
-        -- Sever joint properties locally so the server physics engine stops overriding them
-        if rShoulder then rShoulder.Part1 = nil end
-        if lShoulder then lShoulder.Part1 = nil end
-        
-        -- Local storage for interpolation transition
-        local currentRightCF = rArm.CFrame
-        local currentLeftCF = lArm.CFrame
-
-        -- High frequency loop bypassing server constraints completely (100% FE Replication)
-        loopConnection = RunService.Heartbeat:Connect(function()
-            if not player.Character or not torso:IsDescendantOf(player.Character) then
-                if loopConnection then loopConnection:Disconnect() end
-                return
+        -- High frequency thread handles smooth replication and locks arms safely to the joints
+        coroutine.resume(coroutine.create(function()
+            ATTACK = true
+            Rooted = true
+            
+            while inspecting and reanimated and char:IsDescendantOf(workspace) do
+                Swait()
+                -- Precise CFrame offsets interacting with base shoulder anchors to completely avoid detaching
+                RightShoulder.C0 = Clerp(RightShoulder.C0, CFrame.new(-0.2, -0.1, 0.6) * CFrame.Angles(math.rad(-55), 0, math.rad(-35)) * RIGHTSHOULDERC0, 1 / Animation_Speed)
+                LeftShoulder.C0 = Clerp(LeftShoulder.C0, CFrame.new(0.2, -0.1, 0.6) * CFrame.Angles(math.rad(-55), 0, math.rad(35)) * LEFTSHOULDERC0, 1 / Animation_Speed)
+                
+                -- Keep torso stable while in the animation loop
+                RootJoint.C0 = Clerp(RootJoint.C0, ROOTC0, 1 / Animation_Speed)
+                Neck.C0 = Clerp(Neck.C0, NECKC0, 1 / Animation_Speed)
             end
             
-            -- Keep claiming network ownership of limbs via forced velocity manipulation
-            rArm.Velocity = netVelocity
-            lArm.Velocity = netVelocity
-            
-            -- Linear Interpolate smoothly to target positions relative directly to Torso CFrame
-            currentRightCF = currentRightCF:Lerp(torso.CFrame * targetRightOffset, 0.25)
-            currentLeftCF = currentLeftCF:Lerp(torso.CFrame * targetLeftOffset, 0.25)
-            
-            rArm.CFrame = currentRightCF
-            lArm.CFrame = currentLeftCF
-        end)
+            -- Turn off flags
+            ATTACK = false
+            Rooted = false
+            inspectorBtn.Text = "Inspector"
+            inspectorBtn.TextColor3 = themeColor
+            inspectorBtn.BorderColor3 = themeColor
+        end))
     else
-        inspectorBtn.Text = "Inspector"
-        inspectorBtn.TextColor3 = themeColor
-        inspectorBtn.BorderColor3 = themeColor
-        
-        if loopConnection then
-            loopConnection:Disconnect()
-            loopConnection = nil
-        end
-        
-        -- Instantly reconnect joints to allow default Roblox animations to take back control cleanly
-        if rShoulder then rShoulder.Part1 = rArm end
-        if lShoulder then lShoulder.Part1 = lArm end
+        inspecting = false
     end
 end)
