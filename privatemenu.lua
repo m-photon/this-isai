@@ -7,7 +7,9 @@ local mouse = lp:GetMouse()
 local cam = workspace.CurrentCamera
 local core = pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or lp:WaitForChild("PlayerGui")
 
-pcall(function() core:FindFirstChild("nos_dywll_PrivateMenu"):Destroy() end)
+-- Safely clear previous menu if it exists
+local oldMenu = core:FindFirstChild("nos_dywll_PrivateMenu")
+if oldMenu then pcall(function() oldMenu:Destroy() end) end
 
 local sg = Instance.new("ScreenGui")
 sg.Name = "nos_dywll_PrivateMenu"
@@ -304,7 +306,7 @@ end
 
 plrs.PlayerRemoving:Connect(function(p)
 	if tracers[p] then
-		tracers[p]:Remove()
+		pcall(function() tracers[p]:Remove() end)
 		tracers[p] = nil
 	end
 end)
@@ -365,14 +367,19 @@ local function ghostFling()
 	local start = tick()
 	local conn
 	conn = rs.Heartbeat:Connect(function()
+		-- Added presence validations to prevent game crashes if parts or targets go missing mid-fling
 		if tick() - start > 1.5 or not tp or not tp.Parent or not char or not hrp or not hum then
 			conn:Disconnect()
-			bav:Destroy()
-			bv:Destroy()
-			hrp.AssemblyLinearVelocity = Vector3.zero
-			hrp.AssemblyAngularVelocity = Vector3.zero
-			hrp.CFrame = oldCFrame
-			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+			if bav and bav.Parent then bav:Destroy() end
+			if bv and bv.Parent then bv:Destroy() end
+			if hrp and hrp.Parent then
+				hrp.AssemblyLinearVelocity = Vector3.zero
+				hrp.AssemblyAngularVelocity = Vector3.zero
+				hrp.CFrame = oldCFrame
+			end
+			if hum and hum.Parent then
+				hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+			end
 			state.fling = false
 			vStatus.Visible = false
 			return
@@ -421,7 +428,8 @@ local oldFindPartOnRay
 oldFindPartOnRay = hookfunction(workspace.FindPartOnRay, newcclosure(function(self, ray, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
 	if state.c and not checkcaller() then
 		local closest = getClosestToCursor()
-		if closest ImageLabel and closest.Character and closest.Character:FindFirstChild("Head") then
+		-- FIXED TYPO HERE (Removed accidental "ImageLabel" string insertion)
+		if closest and closest.Character and closest.Character:FindFirstChild("Head") then
 			local targetPos = closest.Character.Head.Position
 			local newRay = Ray.new(ray.Origin, (targetPos - ray.Origin).Unit * ray.Direction.Magnitude)
 			return oldFindPartOnRay(self, newRay, ignoreDescendantsInstance, terrainCellsAreCubes, fractionMultiplier)
