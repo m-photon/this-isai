@@ -60,6 +60,7 @@ title.Font = Enum.Font.Code
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextYAlignment = Enum.TextYAlignment.Center
 title.ZIndex = 2
+title.Active = false
 title.Parent = topbar
 
 --- PLAYER INTEL SIDE MENU ---
@@ -144,7 +145,6 @@ layout.Padding = UDim.new(0, 6)
 layout.Parent = content
 
 --- STATE & LOGIC ---
--- Statuses can be: "disabled", "armed" (waiting for key), or "active" (running)
 local state = {
 	c = "disabled",
 	e = "disabled",
@@ -214,8 +214,8 @@ local vStatus = createStatus("vStatus", "> Flinging Target...", Color3.fromRGB(2
 
 --- COLOR CONFIG ---
 local COLOR_DISABLED = Color3.fromRGB(25, 25, 25)
-local COLOR_ARMED = Color3.fromRGB(55, 55, 75) -- Blueish slate gray
-local COLOR_ACTIVE = Color3.fromRGB(35, 75, 35) -- Forest Green
+local COLOR_ARMED = Color3.fromRGB(55, 55, 75) 
+local COLOR_ACTIVE = Color3.fromRGB(35, 75, 35) 
 
 --- FUNCTIONS ---
 local function getTarget(hrp)
@@ -546,33 +546,35 @@ uis.InputBegan:Connect(function(k, p)
 	end
 end)
 
---- FIXED SMOOTH MOUSE DRAG ENGINE ---
+--- ROCK SOLID MOUSE DRAG ENGINE ---
 local dragging = false
-local dragStart = Vector3.new()
-local startPos = UDim2.new()
+local dragStart = nil
+local startPos = nil
 
 topbar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
-		dragStart = input.Position
+		dragStart = uis:GetMouseLocation()
 		startPos = main.Position
+		
+		local releaseConnection
+		releaseConnection = input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+				releaseConnection:Disconnect()
+			end
+		end)
 	end
 end)
 
 uis.InputChanged:Connect(function(input)
 	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = input.Position - dragStart
+		local delta = uis:GetMouseLocation() - dragStart
 		main.Position = UDim2.new(
 			startPos.X.Scale, 
 			startPos.X.Offset + delta.X, 
 			startPos.Y.Scale, 
 			startPos.Y.Offset + delta.Y
 		)
-	end
-end)
-
-uis.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
 	end
 end)
