@@ -23,11 +23,24 @@ mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
+--- FADED DIAMOND BACKGROUND ---
+local backgroundDiamond = Instance.new("ImageLabel")
+backgroundDiamond.Name = "BackgroundDiamond"
+backgroundDiamond.Size = UDim2.new(0.7, 0, 0.7, 0) -- Takes up 70% of the menu
+backgroundDiamond.Position = UDim2.new(0.5, 0, 0.5, 25) -- Centered perfectly under the top bar
+backgroundDiamond.AnchorPoint = Vector2.new(0.5, 0.5)
+backgroundDiamond.BackgroundTransparency = 1
+backgroundDiamond.Image = "rbxassetid://6034287525" -- Roblox Diamond Asset ID
+backgroundDiamond.ImageTransparency = 0.85 -- Makes it faded/watermarked
+backgroundDiamond.ZIndex = 0 -- Ensures it stays behind the buttons
+backgroundDiamond.Parent = mainFrame
+
 local dragBar = Instance.new("Frame")
 dragBar.Name = "DragBar"
 dragBar.Size = UDim2.new(1, 0, 0, 50)
 dragBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 dragBar.BorderSizePixel = 0
+dragBar.ZIndex = 2
 dragBar.Parent = mainFrame
 
 local titleText = Instance.new("TextLabel")
@@ -43,6 +56,7 @@ titleText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", En
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.TextYAlignment = Enum.TextYAlignment.Center
 titleText.LineHeight = 1.1
+titleText.ZIndex = 2
 titleText.Parent = dragBar
 
 local contentFrame = Instance.new("Frame")
@@ -50,6 +64,7 @@ contentFrame.Name = "Content"
 contentFrame.Size = UDim2.new(1, -20, 1, -65)
 contentFrame.Position = UDim2.new(0, 10, 0, 60)
 contentFrame.BackgroundTransparency = 1
+contentFrame.ZIndex = 2
 contentFrame.Parent = mainFrame
 
 local listLayout = Instance.new("UIListLayout")
@@ -67,6 +82,7 @@ visorButton.Text = "UN fling(might bug)"
 visorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 visorButton.TextSize = 22
 visorButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+visorButton.ZIndex = 2
 visorButton.Parent = contentFrame
 
 local visorMenu = Instance.new("Frame")
@@ -98,12 +114,13 @@ magnetButton.Text = "Item Magnet"
 magnetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 magnetButton.TextSize = 22
 magnetButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+magnetButton.ZIndex = 2
 magnetButton.Parent = contentFrame
 
 local magnetMenu = Instance.new("Frame")
 magnetMenu.Name = "MagnetMenu"
 magnetMenu.Size = UDim2.new(0, 140, 0, 35)
-magnetMenu.Position = UDim2.new(0, 25, 1, -100) -- Placed slightly higher than the fling indicator
+magnetMenu.Position = UDim2.new(0, 25, 1, -100)
 magnetMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 magnetMenu.BorderSizePixel = 0
 magnetMenu.Visible = false
@@ -237,17 +254,14 @@ local function magnetItems()
 	
 	for _, obj in pairs(workspace:GetDescendants()) do
 		if obj:IsA("BasePart") and not obj.Anchored then
-			-- Ensure we don't grab player body parts
 			local parentModel = obj:FindFirstAncestorOfClass("Model")
 			if parentModel and parentModel:FindFirstChildWhichIsA("Humanoid") then
 				continue
 			end
 			
-			-- Teleport with a slight random offset so they don't perfectly overlap and explode
 			local randomOffset = Vector3.new(math.random(-4, 4), math.random(1, 6), math.random(-4, 4))
 			obj.CFrame = CFrame.new(targetPos + randomOffset)
 			
-			-- Kill their momentum so they fall nicely in a pile instead of bouncing everywhere
 			obj.AssemblyLinearVelocity = Vector3.zero
 			obj.AssemblyAngularVelocity = Vector3.zero
 		end
