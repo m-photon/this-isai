@@ -1,447 +1,295 @@
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local uis = game:GetService("UserInputService")
+local plrs = game:GetService("Players")
+local rs = game:GetService("RunService")
 
-local localPlayer = Players.LocalPlayer
-local mouse = localPlayer:GetMouse()
-local camera = workspace.CurrentCamera
-local targetParent = pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or localPlayer:WaitForChild("PlayerGui")
+local lp = plrs.LocalPlayer
+local mouse = lp:GetMouse()
+local cam = workspace.CurrentCamera
+local core = pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or lp:WaitForChild("PlayerGui")
 
-local oldGui = targetParent:FindFirstChild("nos_dywll_PrivateMenu")
-if oldGui then oldGui:Destroy() end
+pcall(function() core:FindFirstChild("nos_dywll_PrivateMenu"):Destroy() end)
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "nos_dywll_PrivateMenu"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = targetParent
+local sg = Instance.new("ScreenGui")
+sg.Name = "nos_dywll_PrivateMenu"
+sg.ResetOnSpawn = false
+sg.Parent = core
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 350, 0, 240)
-mainFrame.Position = UDim2.new(0.5, -175, 0.5, -120)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-mainFrame.BorderSizePixel = 0
-mainFrame.Parent = screenGui
+--- MAIN MENU ---
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 350, 0, 240)
+main.Position = UDim2.new(0.5, -175, 0.5, -120)
+main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+main.BorderSizePixel = 0
+main.Parent = sg
 
---- FADED DIAMOND BACKGROUND ---
-local backgroundDiamond = Instance.new("ImageLabel")
-backgroundDiamond.Name = "BackgroundDiamond"
-backgroundDiamond.Size = UDim2.new(0.7, 0, 0.7, 0)
-backgroundDiamond.Position = UDim2.new(0.5, 0, 0.5, 25) 
-backgroundDiamond.AnchorPoint = Vector2.new(0.5, 0.5)
-backgroundDiamond.BackgroundTransparency = 1
-backgroundDiamond.Image = "rbxassetid://6034287525"
-backgroundDiamond.ImageTransparency = 0.85 
-backgroundDiamond.ZIndex = 0 
-backgroundDiamond.Parent = mainFrame
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(45, 45, 45)
+stroke.Thickness = 1
+stroke.Parent = main
 
-local dragBar = Instance.new("Frame")
-dragBar.Name = "DragBar"
-dragBar.Size = UDim2.new(1, 0, 0, 50)
-dragBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-dragBar.BorderSizePixel = 0
-dragBar.ZIndex = 2
-dragBar.Parent = mainFrame
+local bgDiamond = Instance.new("ImageLabel")
+bgDiamond.Size = UDim2.new(0.7, 0, 0.7, 0)
+bgDiamond.Position = UDim2.new(0.5, 0, 0.5, 25) 
+bgDiamond.AnchorPoint = Vector2.new(0.5, 0.5)
+bgDiamond.BackgroundTransparency = 1
+bgDiamond.Image = "rbxassetid://6034287525"
+bgDiamond.ImageTransparency = 0.85 
+bgDiamond.ZIndex = 0 
+bgDiamond.Parent = main
 
-local titleText = Instance.new("TextLabel")
-titleText.Name = "TitleLabel"
-titleText.Size = UDim2.new(1, -20, 1, 0)
-titleText.Position = UDim2.new(0, 12, 0, 0)
-titleText.BackgroundTransparency = 1
-titleText.RichText = true 
-titleText.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
-titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleText.TextSize = 22
-titleText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Italic)
-titleText.TextXAlignment = Enum.TextXAlignment.Left
-titleText.TextYAlignment = Enum.TextYAlignment.Center
-titleText.LineHeight = 1.1
-titleText.ZIndex = 2
-titleText.Parent = dragBar
+local topbar = Instance.new("Frame")
+topbar.Size = UDim2.new(1, 0, 0, 45)
+topbar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+topbar.BorderSizePixel = 0
+topbar.ZIndex = 2
+topbar.Parent = main
 
-local contentFrame = Instance.new("Frame")
-contentFrame.Name = "Content"
-contentFrame.Size = UDim2.new(1, -20, 1, -65)
-contentFrame.Position = UDim2.new(0, 10, 0, 60)
-contentFrame.BackgroundTransparency = 1
-contentFrame.ZIndex = 2
-contentFrame.Parent = mainFrame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 1, 0)
+title.Position = UDim2.new(0, 12, 0, 0)
+title.BackgroundTransparency = 1
+title.RichText = true 
+title.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 20
+title.Font = Enum.Font.Code
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextYAlignment = Enum.TextYAlignment.Center
+title.ZIndex = 2
+title.Parent = topbar
 
-local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim.new(0, 6)
-listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Parent = contentFrame
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -20, 1, -55)
+content.Position = UDim2.new(0, 10, 0, 50)
+content.BackgroundTransparency = 1
+content.ZIndex = 2
+content.Parent = main
 
---- FLING BUTTON SETUP ---
-local visorButton = Instance.new("TextButton")
-visorButton.Name = "VisorButton"
-visorButton.Size = UDim2.new(1, 0, 0, 38)
-visorButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-visorButton.BorderSizePixel = 0
-visorButton.Text = "UN fling(might bug)"
-visorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-visorButton.TextSize = 22
-visorButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-visorButton.ZIndex = 2
-visorButton.Parent = contentFrame
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 6)
+layout.Parent = content
 
-local visorMenu = Instance.new("Frame")
-visorMenu.Name = "VisorMenu"
-visorMenu.Size = UDim2.new(0, 140, 0, 35)
-visorMenu.Position = UDim2.new(0, 25, 1, -60)
-visorMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-visorMenu.BorderSizePixel = 0
-visorMenu.Visible = false
-visorMenu.Parent = screenGui
+local function createBtn(name, text)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Size = UDim2.new(1, 0, 0, 36)
+	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	btn.BorderSizePixel = 0
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+	btn.TextSize = 16
+	btn.Font = Enum.Font.Code
+	btn.ZIndex = 2
+	btn.Parent = content
+	
+	local btnStroke = Instance.new("UIStroke")
+	btnStroke.Color = Color3.fromRGB(40, 40, 40)
+	btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	btnStroke.Parent = btn
+	return btn
+end
 
-local visorText = Instance.new("TextLabel")
-visorText.Name = "VisorText"
-visorText.Size = UDim2.new(1, 0, 1, 0)
-visorText.BackgroundTransparency = 1
-visorText.Text = "V=UN fling"
-visorText.TextColor3 = Color3.fromRGB(255, 75, 75)
-visorText.TextSize = 20
-visorText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
-visorText.Parent = visorMenu
-
---- MAGNET BUTTON SETUP ---
-local magnetButton = Instance.new("TextButton")
-magnetButton.Name = "MagnetButton"
-magnetButton.Size = UDim2.new(1, 0, 0, 38)
-magnetButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-magnetButton.BorderSizePixel = 0
-magnetButton.Text = "Item Magnet"
-magnetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-magnetButton.TextSize = 22
-magnetButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-magnetButton.ZIndex = 2
-magnetButton.Parent = contentFrame
-
-local magnetMenu = Instance.new("Frame")
-magnetMenu.Name = "MagnetMenu"
-magnetMenu.Size = UDim2.new(0, 140, 0, 35)
-magnetMenu.Position = UDim2.new(0, 25, 1, -100)
-magnetMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-magnetMenu.BorderSizePixel = 0
-magnetMenu.Visible = false
-magnetMenu.Parent = screenGui
-
-local magnetText = Instance.new("TextLabel")
-magnetText.Name = "MagnetText"
-magnetText.Size = UDim2.new(1, 0, 1, 0)
-magnetText.BackgroundTransparency = 1
-magnetText.Text = "T=Bring Items"
-magnetText.TextColor3 = Color3.fromRGB(75, 175, 255)
-magnetText.TextSize = 20
-magnetText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
-magnetText.Parent = magnetMenu
-
---- CHAIR OVERLOAD SETUP ---
-local chairButton = Instance.new("TextButton")
-chairButton.Name = "ChairButton"
-chairButton.Size = UDim2.new(1, 0, 0, 38)
-chairButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-chairButton.BorderSizePixel = 0
-chairButton.Text = "Chair Overload"
-chairButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-chairButton.TextSize = 22
-chairButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-chairButton.ZIndex = 2
-chairButton.Parent = contentFrame
-
-local chairMenu = Instance.new("Frame")
-chairMenu.Name = "ChairMenu"
-chairMenu.Size = UDim2.new(0, 140, 0, 35)
-chairMenu.Position = UDim2.new(0, 25, 1, -140)
-chairMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-chairMenu.BorderSizePixel = 0
-chairMenu.Visible = false
-chairMenu.Parent = screenGui
-
-local chairText = Instance.new("TextLabel")
-chairText.Name = "ChairText"
-chairText.Size = UDim2.new(1, 0, 1, 0)
-chairText.BackgroundTransparency = 1
-chairText.Text = "G=Chair Nearest"
-chairText.TextColor3 = Color3.fromRGB(150, 255, 75)
-chairText.TextSize = 20
-chairText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
-chairText.Parent = chairMenu
-
--- Top Left Tracker Box
-local chairTracker = Instance.new("Frame")
-chairTracker.Name = "ChairTracker"
-chairTracker.Size = UDim2.new(0, 160, 0, 40)
-chairTracker.Position = UDim2.new(0, 20, 0, 20)
-chairTracker.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-chairTracker.BorderSizePixel = 0
-chairTracker.Visible = false
-chairTracker.Parent = screenGui
-
-local chairTrackerCorner = Instance.new("UICorner")
-chairTrackerCorner.CornerRadius = UDim.new(0, 6)
-chairTrackerCorner.Parent = chairTracker
-
-local chairTrackerText = Instance.new("TextLabel")
-chairTrackerText.Name = "ChairTrackerText"
-chairTrackerText.Size = UDim2.new(1, 0, 1, 0)
-chairTrackerText.BackgroundTransparency = 1
-chairTrackerText.Text = "Chairs found: 0"
-chairTrackerText.TextColor3 = Color3.fromRGB(255, 215, 0)
-chairTrackerText.TextSize = 18
-chairTrackerText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-chairTrackerText.Parent = chairTracker
+local vBtn = createBtn("vBtn", "UN Fling [V]")
+local tBtn = createBtn("tBtn", "Item Magnet [T]")
+local cBtn = createBtn("cBtn", "Chair Overload [G]")
 
 
---- STATE VARIABLES ---
-local visorActive = false
-local flinging = false
-local magnetActive = false
-local chairActive = false
-local foundChairs = {}
+--- CLEAN STATUS HUD ---
+local hud = Instance.new("Frame")
+hud.Size = UDim2.new(0, 200, 1, -40)
+hud.Position = UDim2.new(0, 15, 0, 20)
+hud.BackgroundTransparency = 1
+hud.Parent = sg
 
---- NETWORK OWNERSHIP BYPASS ---
-RunService.Heartbeat:Connect(function()
-	if magnetActive or flinging or chairActive then
+local hudLayout = Instance.new("UIListLayout")
+hudLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+hudLayout.Padding = UDim.new(0, 4)
+hudLayout.Parent = hud
+
+local function createStatus(name, text, color)
+	local lbl = Instance.new("TextLabel")
+	lbl.Name = name
+	lbl.Size = UDim2.new(1, 0, 0, 20)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = text
+	lbl.TextColor3 = color
+	lbl.TextSize = 15
+	lbl.Font = Enum.Font.Code
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.TextStrokeTransparency = 0.2 -- Gives it the raw script overlay look
+	lbl.Visible = false
+	lbl.Parent = hud
+	return lbl
+end
+
+local vStatus = createStatus("vStatus", "> [V] Fling Ready", Color3.fromRGB(255, 100, 100))
+local tStatus = createStatus("tStatus", "> [T] Magnet Ready", Color3.fromRGB(100, 200, 255))
+local cStatus = createStatus("cStatus", "> [G] Spawner Ready", Color3.fromRGB(150, 255, 100))
+local cTracker = createStatus("cTracker", "  Chairs Found: 0", Color3.fromRGB(255, 215, 0))
+
+
+--- STATE & LOGIC ---
+local state = { v = false, fling = false, t = false, c = false }
+local chairs = {}
+
+rs.Heartbeat:Connect(function()
+	if state.t or state.fling or state.c then
 		pcall(function()
 			settings().Physics.AllowSleep = false
-			if sethiddenproperty then
-				sethiddenproperty(localPlayer, "SimulationRadius", math.huge)
-			end
+			if sethiddenproperty then sethiddenproperty(lp, "SimulationRadius", math.huge) end
 		end)
 	end
 end)
 
---- SHARED FUNCTIONS ---
-local function getClosestPlayer(hrp)
-	local target, shortDist = nil, math.huge
-	for _, p in pairs(Players:GetPlayers()) do
-		if p ~= localPlayer and p.Character then
-			local tHrp = p.Character:FindFirstChild("HumanoidRootPart")
-			if tHrp then
-				local dist = (hrp.Position - tHrp.Position).Magnitude
-				if dist < shortDist then
-					shortDist = dist
-					target = p.Character
-				end
-			end
+local function getTarget(hrp)
+	local tgt, dist = nil, math.huge
+	for _, p in pairs(plrs:GetPlayers()) do
+		if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local d = (hrp.Position - p.Character.HumanoidRootPart.Position).Magnitude
+			if d < dist then dist = d; tgt = p.Character end
 		end
 	end
-	return target
+	return tgt
 end
 
---- CHAIR FUNCTIONS ---
-local function scanForChairs()
-	foundChairs = {}
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
-			table.insert(foundChairs, obj)
-		end
+local function scanChairs()
+	chairs = {}
+	for _, o in pairs(workspace:GetDescendants()) do
+		if o:IsA("Seat") or o:IsA("VehicleSeat") then table.insert(chairs, o) end
 	end
-	chairTrackerText.Text = "Chairs found: " .. #foundChairs
+	cTracker.Text = "  Chairs Found: " .. #chairs
 end
 
-local function spawnChairAtClosest()
-	if #foundChairs == 0 then return end
+local function spawnChair()
+	if #chairs == 0 then return end
+	local char = lp.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
 	
-	local char = localPlayer.Character
-	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	local tgt = getTarget(char.HumanoidRootPart)
+	if not tgt then return end
 	
-	local targetChar = getClosestPlayer(hrp)
-	if not targetChar then return end
+	local tp = tgt:FindFirstChild("HumanoidRootPart") or tgt:FindFirstChild("Torso")
+	if not tp then return end
 	
-	local targetPart = targetChar:FindFirstChild("HumanoidRootPart") or targetChar:FindFirstChild("Torso") or targetChar:FindFirstChild("UpperTorso")
-	if not targetPart then return end
-	
-	local chair = table.remove(foundChairs)
-	
-	if chair and chair.Parent then
-		for _, force in pairs(chair:GetChildren()) do
-			if force:IsA("BodyMover") or force:IsA("Constraint") or force:IsA("AlignPosition") or force:IsA("Torque") then
-				force:Destroy()
-			end
+	local c = table.remove(chairs)
+	if c and c.Parent then
+		for _, f in pairs(c:GetChildren()) do
+			if f:IsA("BodyMover") or f:IsA("Constraint") or f:IsA("AlignPosition") or f:IsA("Torque") then f:Destroy() end
 		end
-		
-		chair.Anchored = false
-		chair.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
-		chair.CanCollide = false
-		
-		-- Teleport directly onto the nearest player's torso
-		chair.CFrame = targetPart.CFrame
-		chair.AssemblyLinearVelocity = Vector3.zero
-		chair.AssemblyAngularVelocity = Vector3.zero
-		
-		chairTrackerText.Text = "Chairs found: " .. #foundChairs
+		c.Anchored = false
+		c.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
+		c.CanCollide = false
+		c.CFrame = tp.CFrame
+		c.AssemblyLinearVelocity = Vector3.zero
+		c.AssemblyAngularVelocity = Vector3.zero
+		cTracker.Text = "  Chairs Found: " .. #chairs
 	else
-		-- If the chair no longer exists, instantly try the next one in the list
-		spawnChairAtClosest()
+		spawnChair()
 	end
 end
 
---- BUTTON CLICKS ---
-visorButton.MouseButton1Click:Connect(function()
-	visorActive = not visorActive
-	visorMenu.Visible = visorActive
-	visorButton.BackgroundColor3 = visorActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
+vBtn.MouseButton1Click:Connect(function()
+	state.v = not state.v
+	vStatus.Visible = state.v
+	vBtn.BackgroundColor3 = state.v and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 end)
 
-magnetButton.MouseButton1Click:Connect(function()
-	magnetActive = not magnetActive
-	magnetMenu.Visible = magnetActive
-	magnetButton.BackgroundColor3 = magnetActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
+tBtn.MouseButton1Click:Connect(function()
+	state.t = not state.t
+	tStatus.Visible = state.t
+	tBtn.BackgroundColor3 = state.t and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
 end)
 
-chairButton.MouseButton1Click:Connect(function()
-	chairActive = not chairActive
-	chairMenu.Visible = chairActive
-	chairTracker.Visible = chairActive
-	chairButton.BackgroundColor3 = chairActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
-	
-	if chairActive then
-		scanForChairs()
-	end
+cBtn.MouseButton1Click:Connect(function()
+	state.c = not state.c
+	cStatus.Visible = state.c
+	cTracker.Visible = state.c
+	cBtn.BackgroundColor3 = state.c and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(25, 25, 25)
+	if state.c then scanChairs() end
 end)
 
---- FLING / MAGNET FUNCTIONS ---
 local function ghostFling()
-	if flinging then return end
+	if state.fling then return end
+	local char = lp.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChildWhichIsA("Humanoid") then return end
+	local hrp, hum = char.HumanoidRootPart, char:FindFirstChildWhichIsA("Humanoid")
 	
-	local char = localPlayer.Character
-	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
-	if not hrp or not humanoid then return end
+	local tgt = getTarget(hrp)
+	if not tgt then return end
+	local tp = tgt:FindFirstChild("Torso") or tgt:FindFirstChild("UpperTorso") or tgt:FindFirstChild("HumanoidRootPart")
+	if not tp then return end
 	
-	local targetChar = getClosestPlayer(hrp)
-	if not targetChar then return end
+	state.fling = true
+	local sc = hrp.CFrame
+	local oct, occ = cam.CameraType, cam.CFrame
+	cam.CameraType = Enum.CameraType.Scriptable
+	cam.CFrame = occ
 	
-	local targetPart = targetChar:FindFirstChild("Torso") or targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("HumanoidRootPart")
-	if not targetPart then return end
+	local sb = Instance.new("SelectionBox")
+	sb.Color3 = Color3.fromRGB(255, 0, 0)
+	sb.LineThickness = 0.05
+	sb.Adornee = tgt
+	sb.Parent = tgt
 	
-	flinging = true
+	local start = tick()
+	local pts = {}
+	for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then table.insert(pts, p) end end
 	
-	local savedCFrame = hrp.CFrame
-	local oldCameraType = camera.CameraType
-	local oldCameraCFrame = camera.CFrame
-	
-	camera.CameraType = Enum.CameraType.Scriptable
-	camera.CFrame = oldCameraCFrame
-	
-	local selectionBox = Instance.new("SelectionBox")
-	selectionBox.Name = "VisorTargetOutline"
-	selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
-	selectionBox.LineThickness = 0.05
-	selectionBox.Adornee = targetChar
-	selectionBox.Parent = targetChar
-	
-	local startTime = tick()
-	local duration = 0.6 
-	
-	local characterParts = {}
-	for _, part in pairs(char:GetDescendants()) do
-		if part:IsA("BasePart") then
-			table.insert(characterParts, part)
-		end
-	end
-	
-	local loop
-	loop = RunService.Stepped:Connect(function()
-		local elapsed = tick() - startTime
-		
-		if elapsed > duration or not targetPart or not targetPart.Parent or not char or not hrp then
-			loop:Disconnect()
-			if selectionBox then selectionBox:Destroy() end
-			
-			hrp.AssemblyLinearVelocity = Vector3.zero
-			hrp.AssemblyAngularVelocity = Vector3.zero
-			hrp.CFrame = savedCFrame 
-			
-			humanoid:ChangeState(Enum.HumanoidStateType.Running)
-			camera.CameraType = oldCameraType
-			camera.CameraSubject = humanoid
-			
-			flinging = false
+	local conn; conn = rs.Stepped:Connect(function()
+		if tick() - start > 0.6 or not tp or not tp.Parent or not char or not hrp then
+			conn:Disconnect()
+			if sb then sb:Destroy() end
+			hrp.AssemblyLinearVelocity, hrp.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
+			hrp.CFrame = sc
+			hum:ChangeState(Enum.HumanoidStateType.Running)
+			cam.CameraType, cam.CameraSubject = oct, hum
+			state.fling = false
 			return
 		end
-		
-		for _, part in ipairs(characterParts) do
-			part.CanCollide = false
-		end
-		
-		hrp.CFrame = targetPart.CFrame
-		hrp.AssemblyLinearVelocity = Vector3.zero
-		hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
+		for _, p in pairs(pts) do p.CanCollide = false end
+		hrp.CFrame = tp.CFrame
+		hrp.AssemblyLinearVelocity, hrp.AssemblyAngularVelocity = Vector3.zero, Vector3.new(0, 99999, 0)
 	end)
 end
 
-local function magnetItems()
-	local targetPos = mouse.Hit.Position
-	if not targetPos then return end
-	
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("BasePart") and not obj.Anchored then
-			local parentModel = obj:FindFirstAncestorOfClass("Model")
-			if parentModel and parentModel:FindFirstChildWhichIsA("Humanoid") then
-				continue
+local function doMagnet()
+	local pos = mouse.Hit.Position
+	if not pos then return end
+	for _, o in pairs(workspace:GetDescendants()) do
+		if o:IsA("BasePart") and not o.Anchored then
+			local md = o:FindFirstAncestorOfClass("Model")
+			if md and md:FindFirstChildWhichIsA("Humanoid") then continue end
+			for _, f in pairs(o:GetChildren()) do
+				if f:IsA("BodyMover") or f:IsA("Constraint") or f:IsA("AlignPosition") or f:IsA("Torque") then f:Destroy() end
 			end
-			
-			for _, force in pairs(obj:GetChildren()) do
-				if force:IsA("BodyMover") or force:IsA("Constraint") or force:IsA("AlignPosition") or force:IsA("Torque") then
-					force:Destroy()
-				end
-			end
-			
-			obj.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
-			obj.CanCollide = false
-			
-			local randomOffset = Vector3.new(math.random(-4, 4), math.random(1, 6), math.random(-4, 4))
-			obj.CFrame = CFrame.new(targetPos + randomOffset)
-			
-			obj.AssemblyLinearVelocity = Vector3.zero
-			obj.AssemblyAngularVelocity = Vector3.zero
+			o.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
+			o.CanCollide = false
+			o.CFrame = CFrame.new(pos + Vector3.new(math.random(-4,4), math.random(1,6), math.random(-4,4)))
+			o.AssemblyLinearVelocity, o.AssemblyAngularVelocity = Vector3.zero, Vector3.zero
 		end
 	end
 end
 
---- KEYBINDS ---
-UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then return end
-	
-	if visorActive and input.KeyCode == Enum.KeyCode.V then
-		ghostFling()
-	elseif magnetActive and input.KeyCode == Enum.KeyCode.T then
-		magnetItems()
-	elseif chairActive and input.KeyCode == Enum.KeyCode.G then
-		spawnChairAtClosest()
-	end
+uis.InputBegan:Connect(function(k, p)
+	if p then return end
+	if state.v and k.KeyCode == Enum.KeyCode.V then ghostFling()
+	elseif state.t and k.KeyCode == Enum.KeyCode.T then doMagnet()
+	elseif state.c and k.KeyCode == Enum.KeyCode.G then spawnChair() end
 end)
 
---- Smooth UI Dragging ---
-local dragging = false
-local dragStart, startPos
-
-dragBar.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = mainFrame.Position
+--- DRAG LOGIC ---
+local drag, ds, sp
+topbar.InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 then
+		drag, ds, sp = true, i.Position, main.Position
 	end
 end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = input.Position - dragStart
-		mainFrame.Position = UDim2.new(
-			startPos.X.Scale, 
-			startPos.X.Offset + delta.X, 
-			startPos.Y.Scale, 
-			startPos.Y.Offset + delta.Y
-		)
+uis.InputChanged:Connect(function(i)
+	if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+		local d = i.Position - ds
+		main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
 	end
 end)
-
-UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
-	end
+uis.InputEnded:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
 end)
