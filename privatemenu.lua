@@ -3,15 +3,12 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local localPlayer = Players.LocalPlayer
+local mouse = localPlayer:GetMouse()
 local camera = workspace.CurrentCamera
 local targetParent = pcall(function() return game:GetService("CoreGui") end) and game:GetService("CoreGui") or localPlayer:WaitForChild("PlayerGui")
 
--- Forcefully delete any existing menus to prevent old ones from getting stuck
-for _, gui in pairs(targetParent:GetChildren()) do
-	if gui.Name == "nos_dywll_PrivateMenu" then
-		gui:Destroy()
-	end
-end
+local oldGui = targetParent:FindFirstChild("nos_dywll_PrivateMenu")
+if oldGui then oldGui:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "nos_dywll_PrivateMenu"
@@ -60,7 +57,7 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = contentFrame
 
--- BUTTON TEXT IS SET HERE
+--- FLING BUTTON SETUP ---
 local visorButton = Instance.new("TextButton")
 visorButton.Name = "VisorButton"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
@@ -91,15 +88,57 @@ visorText.TextSize = 20
 visorText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
 visorText.Parent = visorMenu
 
+--- MAGNET BUTTON SETUP ---
+local magnetButton = Instance.new("TextButton")
+magnetButton.Name = "MagnetButton"
+magnetButton.Size = UDim2.new(1, 0, 0, 38)
+magnetButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+magnetButton.BorderSizePixel = 0
+magnetButton.Text = "Item Magnet"
+magnetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+magnetButton.TextSize = 22
+magnetButton.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+magnetButton.Parent = contentFrame
+
+local magnetMenu = Instance.new("Frame")
+magnetMenu.Name = "MagnetMenu"
+magnetMenu.Size = UDim2.new(0, 140, 0, 35)
+magnetMenu.Position = UDim2.new(0, 25, 1, -100) -- Placed slightly higher than the fling indicator
+magnetMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+magnetMenu.BorderSizePixel = 0
+magnetMenu.Visible = false
+magnetMenu.Parent = screenGui
+
+local magnetText = Instance.new("TextLabel")
+magnetText.Name = "MagnetText"
+magnetText.Size = UDim2.new(1, 0, 1, 0)
+magnetText.BackgroundTransparency = 1
+magnetText.Text = "T=Bring Items"
+magnetText.TextColor3 = Color3.fromRGB(75, 175, 255)
+magnetText.TextSize = 20
+magnetText.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
+magnetText.Parent = magnetMenu
+
+
+--- STATE VARIABLES ---
 local visorActive = false
 local flinging = false
+local magnetActive = false
 
+--- BUTTON CLICKS ---
 visorButton.MouseButton1Click:Connect(function()
 	visorActive = not visorActive
 	visorMenu.Visible = visorActive
 	visorButton.BackgroundColor3 = visorActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
 end)
 
+magnetButton.MouseButton1Click:Connect(function()
+	magnetActive = not magnetActive
+	magnetMenu.Visible = magnetActive
+	magnetButton.BackgroundColor3 = magnetActive and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(35, 35, 35)
+end)
+
+--- FUNCTIONS ---
 local function getClosestPlayer(hrp)
 	local target, shortDist = nil, math.huge
 	for _, p in pairs(Players:GetPlayers()) do
@@ -133,12 +172,10 @@ local function ghostFling()
 	
 	flinging = true
 	
-	-- Save original state
 	local savedCFrame = hrp.CFrame
 	local oldCameraType = camera.CameraType
 	local oldCameraCFrame = camera.CFrame
 	
-	-- Detach camera so your screen doesn't spin wildly
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.CFrame = oldCameraCFrame
 	
@@ -150,15 +187,16 @@ local function ghostFling()
 	selectionBox.Parent = targetChar
 	
 	local startTime = tick()
-	local duration = 0.6 -- Short and aggressive
+	local duration = 0.8 
 	
-	-- Pre-collect parts for optimization
 	local characterParts = {}
 	for _, part in pairs(char:GetDescendants()) do
 		if part:IsA("BasePart") then
 			table.insert(characterParts, part)
 		end
 	end
+	
+	humanoid.PlatformStand = true 
 	
 	local loop
 	loop = RunService.Stepped:Connect(function()
@@ -168,11 +206,11 @@ local function ghostFling()
 			loop:Disconnect()
 			if selectionBox then selectionBox:Destroy() end
 			
-			-- Restore character and camera cleanly
 			hrp.AssemblyLinearVelocity = Vector3.zero
 			hrp.AssemblyAngularVelocity = Vector3.zero
 			hrp.CFrame = savedCFrame 
 			
+			humanoid.PlatformStand = false
 			humanoid:ChangeState(Enum.HumanoidStateType.Running)
 			camera.CameraType = oldCameraType
 			camera.CameraSubject = humanoid
@@ -181,22 +219,49 @@ local function ghostFling()
 			return
 		end
 		
-		-- Ghost mode: Turn off collisions so you don't get stuck on the map
 		for _, part in ipairs(characterParts) do
 			part.CanCollide = false
 		end
 		
-		-- The actual FE Fling mechanism
-		hrp.CFrame = targetPart.CFrame
-		hrp.AssemblyLinearVelocity = Vector3.zero
-		hrp.AssemblyAngularVelocity = Vector3.new(0, 99999, 0)
+		local randomJitter = Vector3.new(math.random(-10, 10) / 100, math.random(-10, 10) / 100, math.random(-10, 10) / 100)
+		hrp.CFrame = targetPart.CFrame * CFrame.new(randomJitter)
+		
+		hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+		hrp.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
 	end)
 end
 
+local function magnetItems()
+	local targetPos = mouse.Hit.Position
+	if not targetPos then return end
+	
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") and not obj.Anchored then
+			-- Ensure we don't grab player body parts
+			local parentModel = obj:FindFirstAncestorOfClass("Model")
+			if parentModel and parentModel:FindFirstChildWhichIsA("Humanoid") then
+				continue
+			end
+			
+			-- Teleport with a slight random offset so they don't perfectly overlap and explode
+			local randomOffset = Vector3.new(math.random(-4, 4), math.random(1, 6), math.random(-4, 4))
+			obj.CFrame = CFrame.new(targetPos + randomOffset)
+			
+			-- Kill their momentum so they fall nicely in a pile instead of bouncing everywhere
+			obj.AssemblyLinearVelocity = Vector3.zero
+			obj.AssemblyAngularVelocity = Vector3.zero
+		end
+	end
+end
+
+--- KEYBINDS ---
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
+	
 	if visorActive and input.KeyCode == Enum.KeyCode.V then
 		ghostFling()
+	elseif magnetActive and input.KeyCode == Enum.KeyCode.T then
+		magnetItems()
 	end
 end)
 
