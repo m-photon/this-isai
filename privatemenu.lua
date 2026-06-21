@@ -13,6 +13,7 @@ screenGui.Name = "nos_dywll_PrivateMenu"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = targetParent
 
+-- Main Window (Sharp Rectangular Style)
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 350, 0, 240)
@@ -21,10 +22,7 @@ mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
 
-local frameCorner = Instance.new("UICorner")
-frameCorner.CornerRadius = UDim.new(0, 8)
-frameCorner.Parent = mainFrame
-
+-- Top Bar
 local dragBar = Instance.new("Frame")
 dragBar.Name = "DragBar"
 dragBar.Size = UDim2.new(1, 0, 0, 50)
@@ -32,10 +30,7 @@ dragBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 dragBar.BorderSizePixel = 0
 dragBar.Parent = mainFrame
 
-local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(0, 8)
-barCorner.Parent = dragBar
-
+-- Title text using image font style
 local titleText = Instance.new("TextLabel")
 titleText.Name = "TitleLabel"
 titleText.Size = UDim2.new(1, -20, 1, 0)
@@ -45,7 +40,7 @@ titleText.RichText = true
 titleText.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.TextSize = 14
-titleText.Font = Enum.Font.GothamBold
+titleText.Font = Enum.Font.GothamBoldItalic
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.TextYAlignment = Enum.TextYAlignment.Center
 titleText.LineHeight = 1.1
@@ -63,20 +58,18 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = contentFrame
 
+-- Menu Button
 local visorButton = Instance.new("TextButton")
 visorButton.Name = "VisorButton"
 visorButton.Size = UDim2.new(1, 0, 0, 38)
 visorButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 visorButton.Text = "Visor"
 visorButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-visorButton.Font = Enum.Font.GothamBold
+visorButton.Font = Enum.Font.GothamBoldItalic
 visorButton.TextSize = 14
 visorButton.Parent = contentFrame
 
-local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim.new(0, 6)
-buttonCorner.Parent = visorButton
-
+-- Status Box
 local visorMenu = Instance.new("Frame")
 visorMenu.Name = "VisorMenu"
 visorMenu.Size = UDim2.new(0, 140, 0, 35)
@@ -86,17 +79,13 @@ visorMenu.BorderSizePixel = 0
 visorMenu.Visible = false
 visorMenu.Parent = screenGui
 
-local visorMenuCorner = Instance.new("UICorner")
-visorMenuCorner.CornerRadius = UDim.new(0, 6)
-visorMenuCorner.Parent = visorMenu
-
 local visorText = Instance.new("TextLabel")
 visorText.Name = "VisorText"
 visorText.Size = UDim2.new(1, 0, 1, 0)
 visorText.BackgroundTransparency = 1
 visorText.Text = "V=kill nearby"
 visorText.TextColor3 = Color3.fromRGB(255, 75, 75)
-visorText.Font = Enum.Font.GothamBold
+visorText.Font = Enum.Font.GothamItalic
 visorText.TextSize = 14
 visorText.Parent = visorMenu
 
@@ -142,7 +131,7 @@ local function fling()
 	
 	flinging = true
 	
-	-- Line-only selection box replaces the broken cyan highlight completely
+	-- Line-only SelectionBox completely bypasses default cyan box bugs
 	local selectionBox = Instance.new("SelectionBox")
 	selectionBox.Name = "VisorTargetOutline"
 	selectionBox.Color3 = Color3.fromRGB(255, 0, 0)
@@ -158,7 +147,8 @@ local function fling()
 	local duration = 0.4
 	
 	local loop
-	loop = RunService.Heartbeat:Connect(function()
+	-- Switched to Stepped to intercept and lock physics calculations before they run
+	loop = RunService.Stepped:Connect(function()
 		local elapsed = tick() - startTime
 		
 		if elapsed > duration or not targetPart or not targetPart.Parent or not char or not hrp or not rootJoint then
@@ -167,7 +157,7 @@ local function fling()
 			
 			if rootJoint and originalC0 then rootJoint.C0 = originalC0 end
 			
-			-- Hard cut all directional/angular vectors to eliminate self-flinging completely
+			-- Instantly kill velocities upon script release
 			hrp.AssemblyLinearVelocity = Vector3.zero
 			hrp.AssemblyAngularVelocity = Vector3.zero
 			
@@ -183,14 +173,14 @@ local function fling()
 			if part:IsA("BasePart") then part.CanCollide = false end
 		end
 		
-		-- Track positions directly 
+		-- Locks your actual physics position right onto the target frame
 		hrp.CFrame = targetPart.CFrame
 		
-		-- Pure spinning force flings targets on contact without giving you linear velocity
+		-- Combined extreme multi-axis vectors ensure an instant server-side physics explosion for the victim
+		hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
 		hrp.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
-		hrp.AssemblyLinearVelocity = Vector3.zero
 		
-		-- Sends visual limbs 50,000 studs out of bounds so you are 100% invisible to the server
+		-- Replicated Skybox Offset: Holds visual limbs 50,000 studs up out of render distance
 		rootJoint.C0 = CFrame.new(0, 50000, 0) * originalC0
 	end)
 end
@@ -202,6 +192,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
+-- Dragging mechanics
 local dragging, dragInput, dragStart, startPos
 
 dragBar.InputBegan:Connect(function(input)
