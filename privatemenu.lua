@@ -31,8 +31,8 @@ sg.Parent = core
 
 --- MAIN MENU ---
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 350, 0, 380) 
-main.Position = UDim2.new(0.5, -175, 0.5, -190)
+main.Size = UDim2.new(0, 500, 0, 300) 
+main.Position = UDim2.new(0.5, -250, 0.5, -150)
 main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 main.BorderSizePixel = 0
 main.Parent = sg
@@ -43,8 +43,8 @@ stroke.Thickness = 1
 stroke.Parent = main
 
 local bgDiamond = Instance.new("ImageLabel")
-bgDiamond.Size = UDim2.new(0.7, 0, 0.7, 0)
-bgDiamond.Position = UDim2.new(0.5, 0, 0.5, 25)
+bgDiamond.Size = UDim2.new(0.6, 0, 0.8, 0)
+bgDiamond.Position = UDim2.new(0.5, 0, 0.5, 20)
 bgDiamond.AnchorPoint = Vector2.new(0.5, 0.5)
 bgDiamond.BackgroundTransparency = 1
 bgDiamond.Image = "rbxassetid://6034287525"
@@ -75,6 +75,41 @@ title.TextYAlignment = Enum.TextYAlignment.Center
 title.ZIndex = 2
 title.Active = false 
 title.Parent = topbar
+
+--- SEARCH BAR AREA ---
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -20, 0, 30)
+searchBox.Position = UDim2.new(0, 10, 0, 52)
+searchBox.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
+searchBox.BorderSizePixel = 0
+searchBox.Text = ""
+searchBox.PlaceholderText = "🔍 Search features..."
+searchBox.TextColor3 = Color3.fromRGB(220, 220, 220)
+searchBox.TextSize = 13
+searchBox.Font = Enum.Font.Code
+searchBox.ZIndex = 3
+searchBox.Parent = main
+
+local searchStroke = Instance.new("UIStroke")
+searchStroke.Color = Color3.fromRGB(45, 45, 45)
+searchStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+searchStroke.Parent = searchBox
+
+--- MAIN SCROLLING CONTENT ---
+local content = Instance.new("ScrollingFrame")
+content.Size = UDim2.new(1, -20, 1, -100)
+content.Position = UDim2.new(0, 10, 0, 90)
+content.BackgroundTransparency = 1
+content.BorderSizePixel = 0
+content.ScrollBarThickness = 2
+content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+content.CanvasSize = UDim2.new(0, 0, 0, 0)
+content.ZIndex = 2
+content.Parent = main
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 6)
+layout.Parent = content
 
 --- DYNAMIC TARGET INPUT SIDE MENU (LEFT SIDE) ---
 local activeTargetAction = nil
@@ -207,22 +242,6 @@ local function refreshIntel()
     end
 end
 
---- MAIN SCROLLING CONTENT ---
-local content = Instance.new("ScrollingFrame")
-content.Size = UDim2.new(1, -20, 1, -65)
-content.Position = UDim2.new(0, 10, 0, 55)
-content.BackgroundTransparency = 1
-content.BorderSizePixel = 0
-content.ScrollBarThickness = 2
-content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-content.CanvasSize = UDim2.new(0, 0, 0, 0)
-content.ZIndex = 2
-content.Parent = main
-
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 6)
-layout.Parent = content
-
 --- STATE CONFIGURATION ---
 local state = {
     e = "disabled",
@@ -233,6 +252,7 @@ local state = {
     jump = "disabled",
     ghost = "disabled",
     spectate = "disabled",
+    attach = "disabled",
     fling_running = false
 }
 
@@ -240,7 +260,8 @@ local COLOR_DISABLED = Color3.fromRGB(25, 25, 25)
 local COLOR_ARMED = Color3.fromRGB(55, 55, 75) 
 local COLOR_ACTIVE = Color3.fromRGB(35, 75, 35) 
 
---- UI FACTORY FUNCTIONS ---
+--- UI FACTORY FUNCTION ---
+local allButtons = {}
 local function createBtn(name, text)
     local btn = Instance.new("TextButton")
     btn.Name = name
@@ -257,30 +278,46 @@ local function createBtn(name, text)
     btnStroke.Color = Color3.fromRGB(40, 40, 40)
     btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     btnStroke.Parent = btn
+    
+    table.insert(allButtons, btn)
     return btn
 end
 
---- BUILDING THE UI LAYOUT ---
-local iBtn = createBtn("iBtn", "Server Intel (Side Menu)")
-local eBtn = createBtn("eBtn", "Player ESP [E]")
-local tBtn = createBtn("tBtn", "Tracers [T]")
-local vBtn = createBtn("vBtn", "Execute Fling [V]")
-
-local flyBtn = createBtn("flyBtn", "Flight (WASD)")
-local speedBtn = createBtn("speedBtn", "Fast Walk")
-local jumpBtn = createBtn("jumpBtn", "High Jump")
-local ghostBtn = createBtn("ghostBtn", "Ghost Mode (Local Hide)")
+--- BUILDING THE UI LAYOUT (SORTED ALPHABETICALLY) ---
+local attachBtn  = createBtn("attachBtn", "Attach Loop")
+local vBtn       = createBtn("vBtn", "Execute Fling [V]")
+local speedBtn   = createBtn("speedBtn", "Fast Walk")
+local flyBtn     = createBtn("flyBtn", "Flight (WASD)")
+local ghostBtn   = createBtn("ghostBtn", "Ghost Mode (Local Hide)")
+local gotoBtn    = createBtn("gotoBtn", "Goto Target")
+local jumpBtn    = createBtn("jumpBtn", "High Jump")
+local dexBtn     = createBtn("dexBtn", "Load Dex Explorer")
+local iyBtn      = createBtn("iyBtn", "Load Infinite Yield")
+local espHubBtn  = createBtn("espHubBtn", "Load Unnamed ESP")
+local eBtn       = createBtn("eBtn", "Player ESP [E]")
 local refreshBtn = createBtn("refreshBtn", "Refresh Character")
+local rejoinBtn  = createBtn("rejoinBtn", "Rejoin Server")
+local hopBtn     = createBtn("hopBtn", "Server Hop")
+local iBtn       = createBtn("iBtn", "Server Intel (Side Menu)")
+local specBtn    = createBtn("specBtn", "Spectate Target")
 
-local gotoBtn = createBtn("gotoBtn", "Goto Target")
-local specBtn = createBtn("specBtn", "Spectate Target")
+-- Ensure alphabetical rendering regardless of instantiation order
+table.sort(allButtons, function(a, b) return a.Text < b.Text end)
+for i, btn in ipairs(allButtons) do
+    btn.LayoutOrder = i
+end
 
-local rejoinBtn = createBtn("rejoinBtn", "Rejoin Server")
-local hopBtn = createBtn("hopBtn", "Server Hop")
-
-local iyBtn = createBtn("iyBtn", "Load Infinite Yield")
-local dexBtn = createBtn("dexBtn", "Load Dex Explorer")
-local espHubBtn = createBtn("espHubBtn", "Load Unnamed ESP")
+--- DYNAMIC SEARCH FILTER CORES ---
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local filter = string.lower(searchBox.Text)
+    for _, btn in pairs(allButtons) do
+        if filter == "" or string.find(string.lower(btn.Text), filter) then
+            btn.Visible = true
+        else
+            btn.Visible = false
+        end
+    end
+end)
 
 --- CLEAN STATUS HUD ---
 local hud = Instance.new("Frame")
@@ -435,7 +472,6 @@ rs.RenderStepped:Connect(function()
             if state.jump == "active" then hum.UseJumpPower = true; hum.JumpPower = 100 else hum.JumpPower = 50 end
         end
         
-        -- UPGRADED DIRECT-CHECK FLIGHT PHYSICS LOOP
         if state.fly == "active" and hrp and hum then
             hum.PlatformStand = true
             if not hrp:FindFirstChild("FlyVelocity") then
@@ -452,7 +488,6 @@ rs.RenderStepped:Connect(function()
             local bv = hrp:FindFirstChild("FlyVelocity")
             local bg = hrp:FindFirstChild("FlyGyro")
             
-            -- Read key vectors directly from the engine state to guarantee absolute direction accuracy
             local moveDir = Vector3.zero
             if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
             if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
@@ -477,16 +512,49 @@ rs.RenderStepped:Connect(function()
     end
 end)
 
+--- ATTACH LOOP PERSISTENT CONTROLLER ---
+local activeAttachTrack = nil
+local activeAttachConnection = nil
+
+local function stopAttachLoop()
+    state.attach = "disabled"
+    attachBtn.BackgroundColor3 = COLOR_DISABLED
+    if activeAttachConnection then activeAttachConnection:Disconnect() activeAttachConnection = nil end
+    if activeAttachTrack then activeAttachTrack:Stop() activeAttachTrack = nil end
+end
+
+local function startAttachLoop(targetPlayer)
+    stopAttachLoop() 
+    if not targetPlayer or not targetPlayer.Character then return end
+    
+    state.attach = "active"
+    attachBtn.BackgroundColor3 = COLOR_ACTIVE
+    
+    local A = Instance.new("Animation")
+    A.AnimationId = "rbxassetid://148840371"
+    
+    local C = lp.Character or lp.CharacterAdded:Wait()
+    local hum = C:WaitForChild("Humanoid")
+    activeAttachTrack = hum:LoadAnimation(A)
+    activeAttachTrack:Play()
+    activeAttachTrack:AdjustSpeed(2.5)
+    
+    activeAttachConnection = rs.Stepped:Connect(function()
+        if state.attach ~= "active" or not targetPlayer or not targetPlayer.Parent or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") or not C or not C:FindFirstChild("HumanoidRootPart") then
+            stopAttachLoop()
+            return
+        end
+        pcall(function()
+            C:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(targetPlayer.Character:FindFirstChild("HumanoidRootPart").Position)
+        end)
+    end)
+end
+
 --- MENU BUTTON INTERFACE OPERATIONS ---
 
 eBtn.MouseButton1Click:Connect(function()
     if state.e == "disabled" then state.e = "armed"; eBtn.BackgroundColor3 = COLOR_ARMED
     else state.e = "disabled"; eStatus.Visible = false; espFolder:ClearAllChildren(); eBtn.BackgroundColor3 = COLOR_DISABLED end
-end)
-
-tBtn.MouseButton1Click:Connect(function()
-    if state.t == "disabled" then state.t = "armed"; tBtn.BackgroundColor3 = COLOR_ARMED
-    else state.t = "disabled"; tStatus.Visible = false; tBtn.BackgroundColor3 = COLOR_DISABLED end
 end)
 
 vBtn.MouseButton1Click:Connect(function()
@@ -562,7 +630,8 @@ gotoBtn.MouseButton1Click:Connect(function()
         activeTargetAction = "goto"
         targetTitle.Text = " Action: Goto Target"
         gotoBtn.BackgroundColor3 = COLOR_ARMED
-        if state.spectate ~= "active" then specBtn.BackgroundColor3 = COLOR_DISABLED end
+        specBtn.BackgroundColor3 = COLOR_DISABLED
+        attachBtn.BackgroundColor3 = COLOR_DISABLED
         targetBox:CaptureFocus()
     end
 end)
@@ -588,6 +657,29 @@ specBtn.MouseButton1Click:Connect(function()
             targetTitle.Text = " Action: Spectate"
             specBtn.BackgroundColor3 = COLOR_ARMED
             gotoBtn.BackgroundColor3 = COLOR_DISABLED
+            attachBtn.BackgroundColor3 = COLOR_DISABLED
+            targetBox:CaptureFocus()
+        end
+    end
+end)
+
+attachBtn.MouseButton1Click:Connect(function()
+    if state.attach == "active" then
+        stopAttachLoop()
+        targetMenu.Visible = false
+        activeTargetAction = nil
+    else
+        if activeTargetAction == "attach" and targetMenu.Visible then
+            targetMenu.Visible = false
+            activeTargetAction = nil
+            attachBtn.BackgroundColor3 = COLOR_DISABLED
+        else
+            targetMenu.Visible = true
+            activeTargetAction = "attach"
+            targetTitle.Text = " Action: Attach Loop"
+            attachBtn.BackgroundColor3 = COLOR_ARMED
+            gotoBtn.BackgroundColor3 = COLOR_DISABLED
+            specBtn.BackgroundColor3 = COLOR_DISABLED
             targetBox:CaptureFocus()
         end
     end
@@ -613,11 +705,16 @@ targetBox.FocusLost:Connect(function(enterPressed)
                 end
                 targetMenu.Visible = false
                 activeTargetAction = nil
+            elseif activeTargetAction == "attach" then
+                startAttachLoop(t)
+                targetMenu.Visible = false
+                activeTargetAction = nil
             end
         else
             targetMenu.Visible = false
             activeTargetAction = nil
             gotoBtn.BackgroundColor3 = COLOR_DISABLED
+            attachBtn.BackgroundColor3 = COLOR_DISABLED
             if state.spectate ~= "active" then specBtn.BackgroundColor3 = COLOR_DISABLED end
         end
         targetBox.Text = ""
@@ -704,9 +801,6 @@ uis.InputBegan:Connect(function(k, p)
     if k.KeyCode == Enum.KeyCode.E then
         if state.e == "armed" then state.e = "active"; eStatus.Visible = true; eBtn.BackgroundColor3 = COLOR_ACTIVE
         elseif state.e == "active" then state.e = "armed"; eStatus.Visible = false; espFolder:ClearAllChildren(); eBtn.BackgroundColor3 = COLOR_ARMED end
-    elseif k.KeyCode == Enum.KeyCode.T then
-        if state.t == "armed" then state.t = "active"; tStatus.Visible = true; tBtn.BackgroundColor3 = COLOR_ACTIVE
-        elseif state.t == "active" then state.t = "armed"; tStatus.Visible = false; tBtn.BackgroundColor3 = COLOR_ARMED end
     elseif k.KeyCode == Enum.KeyCode.V then
         if state.v == "armed" then ghostFling() end
     end
