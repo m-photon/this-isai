@@ -1,3 +1,4 @@
+
 local uis = game:GetService("UserInputService")
 local plrs = game:GetService("Players")
 local rs = game:GetService("RunService")
@@ -111,7 +112,7 @@ local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 6)
 layout.Parent = content
 
---- DYNAMIC TARGET INPUT SIDE MENU (LEFT SIDE) ---
+--- DYNAMIC TARGET INPUT SIDE MENU (LEFT SIDE FOR GOTO/SPECTATE) ---
 local activeTargetAction = nil
 
 local targetMenu = Instance.new("Frame")
@@ -364,16 +365,20 @@ local function getTarget(hrp)
     return tgt
 end
 
+local function getClosestPlayer()
+    if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        local closestChar = getTarget(lp.Character.HumanoidRootPart)
+        if closestChar then
+            return plrs:GetPlayerFromCharacter(closestChar)
+        end
+    end
+    return nil
+end
+
 local function getTargetPlayer()
     local txt = string.lower(targetBox.Text)
     if txt == "" then 
-        if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-            local closestChar = getTarget(lp.Character.HumanoidRootPart)
-            if closestChar then
-                return plrs:GetPlayerFromCharacter(closestChar)
-            end
-        end
-        return nil 
+        return getClosestPlayer()
     end
     for _, p in pairs(plrs:GetPlayers()) do
         if string.sub(string.lower(p.Name), 1, #txt) == txt or string.sub(string.lower(p.DisplayName), 1, #txt) == txt then
@@ -648,7 +653,6 @@ gotoBtn.MouseButton1Click:Connect(function()
         targetTitle.Text = " Action: Goto Target"
         gotoBtn.BackgroundColor3 = COLOR_ARMED
         specBtn.BackgroundColor3 = COLOR_DISABLED
-        frunkBtn.BackgroundColor3 = COLOR_DISABLED
         targetBox:CaptureFocus()
     end
 end)
@@ -674,30 +678,19 @@ specBtn.MouseButton1Click:Connect(function()
             targetTitle.Text = " Action: Spectate"
             specBtn.BackgroundColor3 = COLOR_ARMED
             gotoBtn.BackgroundColor3 = COLOR_DISABLED
-            frunkBtn.BackgroundColor3 = COLOR_DISABLED
             targetBox:CaptureFocus()
         end
     end
 end)
 
+-- Instant Closest-Target Frunk Execution
 frunkBtn.MouseButton1Click:Connect(function()
     if state.frunk == "active" then
         stopFrunkLoop()
-        targetMenu.Visible = false
-        activeTargetAction = nil
     else
-        if activeTargetAction == "frunk" and targetMenu.Visible then
-            targetMenu.Visible = false
-            activeTargetAction = nil
-            frunkBtn.BackgroundColor3 = COLOR_DISABLED
-        else
-            targetMenu.Visible = true
-            activeTargetAction = "frunk"
-            targetTitle.Text = " Action: Frunk"
-            frunkBtn.BackgroundColor3 = COLOR_ARMED
-            gotoBtn.BackgroundColor3 = COLOR_DISABLED
-            specBtn.BackgroundColor3 = COLOR_DISABLED
-            targetBox:CaptureFocus()
+        local nearPlayer = getClosestPlayer()
+        if nearPlayer then
+            startFrunkLoop(nearPlayer)
         end
     end
 end)
@@ -722,16 +715,11 @@ targetBox.FocusLost:Connect(function(enterPressed)
                 end
                 targetMenu.Visible = false
                 activeTargetAction = nil
-            elseif activeTargetAction == "frunk" then
-                startFrunkLoop(t)
-                targetMenu.Visible = false
-                activeTargetAction = nil
             end
         else
             targetMenu.Visible = false
             activeTargetAction = nil
             gotoBtn.BackgroundColor3 = COLOR_DISABLED
-            frunkBtn.BackgroundColor3 = COLOR_DISABLED
             if state.spectate ~= "active" then specBtn.BackgroundColor3 = COLOR_DISABLED end
         end
         targetBox.Text = ""
