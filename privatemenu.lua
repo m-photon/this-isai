@@ -31,7 +31,7 @@ sg.Parent = core
 
 --- MAIN MENU ---
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 350, 0, 380) -- Increased height to fit the new scrollable UI
+main.Size = UDim2.new(0, 350, 0, 380) 
 main.Position = UDim2.new(0.5, -175, 0.5, -190)
 main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 main.BorderSizePixel = 0
@@ -66,9 +66,9 @@ title.Size = UDim2.new(1, -20, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
 title.RichText = true
-title.Text = '<font color="#FFD700">nos_dywyll\'s</font>\nPrivate menu'
+title.Text = '<font color="#FFD700">Nos_dywylls</font> private paid menu'
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = 20
+title.TextSize = 16
 title.Font = Enum.Font.Code
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.TextYAlignment = Enum.TextYAlignment.Center
@@ -179,25 +179,6 @@ local COLOR_ARMED = Color3.fromRGB(55, 55, 75)
 local COLOR_ACTIVE = Color3.fromRGB(35, 75, 35) 
 
 --- UI FACTORY FUNCTIONS ---
-local function createHeader(text)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, 0, 0, 20)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = " " .. text
-    lbl.TextColor3 = Color3.fromRGB(255, 215, 0)
-    lbl.TextSize = 13
-    lbl.Font = Enum.Font.Code
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = content
-    local line = Instance.new("Frame")
-    line.Size = UDim2.new(1, -5, 0, 1)
-    line.Position = UDim2.new(0, 0, 1, 0)
-    line.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    line.BorderSizePixel = 0
-    line.Parent = lbl
-    return lbl
-end
-
 local function createBtn(name, text)
     local btn = Instance.new("TextButton")
     btn.Name = name
@@ -217,21 +198,18 @@ local function createBtn(name, text)
     return btn
 end
 
---- BUILDING THE UI LAYOUT ---
-createHeader("Original Loadout")
+--- BUILDING THE UI LAYOUT (Streamlined Layout) ---
 local iBtn = createBtn("iBtn", "Server Intel (Side Menu)")
 local eBtn = createBtn("eBtn", "Player ESP [E]")
 local tBtn = createBtn("tBtn", "Tracers [T]")
 local vBtn = createBtn("vBtn", "Execute Fling [V]")
 
-createHeader("Local Player (Orca Mods)")
 local flyBtn = createBtn("flyBtn", "Flight (WASD)")
 local speedBtn = createBtn("speedBtn", "Fast Walk")
 local jumpBtn = createBtn("jumpBtn", "High Jump")
 local ghostBtn = createBtn("ghostBtn", "Ghost Mode (Local Hide)")
 local refreshBtn = createBtn("refreshBtn", "Refresh Character")
 
-createHeader("Targeting Actions")
 local targetBox = Instance.new("TextBox")
 targetBox.Size = UDim2.new(1, -5, 0, 30)
 targetBox.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
@@ -251,11 +229,9 @@ targetStroke.Parent = targetBox
 local gotoBtn = createBtn("gotoBtn", "Goto Target")
 local specBtn = createBtn("specBtn", "Spectate Target")
 
-createHeader("Server Options")
 local rejoinBtn = createBtn("rejoinBtn", "Rejoin Server")
 local hopBtn = createBtn("hopBtn", "Server Hop")
 
-createHeader("Script Hub (Orca Apps)")
 local iyBtn = createBtn("iyBtn", "Load Infinite Yield")
 local dexBtn = createBtn("dexBtn", "Load Dex Explorer")
 local espHubBtn = createBtn("espHubBtn", "Load Unnamed ESP")
@@ -392,11 +368,9 @@ end)
 
 --- RENDER LOOP ENGINE ---
 rs.RenderStepped:Connect(function()
-    -- Original UI Updates
     if state.e == "active" then updateESP() else espFolder:ClearAllChildren() end
     updateTracers()
     
-    -- Orca Local Player Handling
     if lp.Character and not state.fling_running then
         local char = lp.Character
         local hum = char:FindFirstChildWhichIsA("Humanoid")
@@ -407,7 +381,6 @@ rs.RenderStepped:Connect(function()
             if state.jump == "active" then hum.UseJumpPower = true; hum.JumpPower = 100 else hum.JumpPower = 50 end
         end
         
-        -- Flight physics loop
         if state.fly == "active" and hrp and hum then
             hum.PlatformStand = true
             if not hrp:FindFirstChild("FlyVelocity") then
@@ -446,7 +419,6 @@ end)
 
 --- MENU BUTTON INTERFACE OPERATIONS ---
 
--- Original Combat Buttons
 eBtn.MouseButton1Click:Connect(function()
     if state.e == "disabled" then state.e = "armed"; eBtn.BackgroundColor3 = COLOR_ARMED
     else state.e = "disabled"; eStatus.Visible = false; espFolder:ClearAllChildren(); eBtn.BackgroundColor3 = COLOR_DISABLED end
@@ -469,7 +441,6 @@ iBtn.MouseButton1Click:Connect(function()
     if sideOpen then refreshIntel() end
 end)
 
--- Orca Local Player Buttons
 local function simpleToggle(btn, key)
     btn.MouseButton1Click:Connect(function()
         if state[key] == "disabled" then
@@ -521,7 +492,6 @@ refreshBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Orca Targeting Actions
 gotoBtn.MouseButton1Click:Connect(function()
     local t = getTargetPlayer()
     if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
@@ -548,7 +518,6 @@ specBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Orca Server Options
 rejoinBtn.MouseButton1Click:Connect(function()
     ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, lp)
 end)
@@ -557,7 +526,6 @@ hopBtn.MouseButton1Click:Connect(function()
     ts:Teleport(game.PlaceId, lp)
 end)
 
--- Orca Hub Integrations
 iyBtn.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
 end)
@@ -569,7 +537,6 @@ end)
 espHubBtn.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet('https://raw.githubusercontent.com/ic3w0lf22/Unnamed-ESP/master/UnnamedESP.lua'))()
 end)
-
 
 --- GHOST FLING EXECUTION ---
 local function ghostFling()
@@ -628,7 +595,6 @@ end
 uis.InputBegan:Connect(function(k, p)
     if p then return end
     
-    -- Original Combat Arms
     if k.KeyCode == Enum.KeyCode.E then
         if state.e == "armed" then state.e = "active"; eStatus.Visible = true; eBtn.BackgroundColor3 = COLOR_ACTIVE
         elseif state.e == "active" then state.e = "armed"; eStatus.Visible = false; espFolder:ClearAllChildren(); eBtn.BackgroundColor3 = COLOR_ARMED end
@@ -638,7 +604,6 @@ uis.InputBegan:Connect(function(k, p)
     elseif k.KeyCode == Enum.KeyCode.V then
         if state.v == "armed" then ghostFling() end
     
-    -- Fly Movement Capture
     elseif k.KeyCode == Enum.KeyCode.W then flyCtrl.F = 1
     elseif k.KeyCode == Enum.KeyCode.S then flyCtrl.B = -1
     elseif k.KeyCode == Enum.KeyCode.A then flyCtrl.L = -1
