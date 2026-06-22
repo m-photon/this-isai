@@ -252,7 +252,7 @@ local state = {
     jump = "disabled",
     ghost = "disabled",
     spectate = "disabled",
-    attach = "disabled",
+    frunk = "disabled",
     fling_running = false
 }
 
@@ -284,10 +284,10 @@ local function createBtn(name, text)
 end
 
 --- BUILDING THE UI LAYOUT (SORTED ALPHABETICALLY) ---
-local attachBtn  = createBtn("attachBtn", "Attach Loop")
 local vBtn       = createBtn("vBtn", "Execute Fling [V]")
 local speedBtn   = createBtn("speedBtn", "Fast Walk")
 local flyBtn     = createBtn("flyBtn", "Flight (WASD)")
+local frunkBtn   = createBtn("frunkBtn", "Frunk")
 local ghostBtn   = createBtn("ghostBtn", "Ghost Mode (Local Hide)")
 local gotoBtn    = createBtn("gotoBtn", "Goto Target")
 local jumpBtn    = createBtn("jumpBtn", "High Jump")
@@ -513,12 +513,12 @@ rs.RenderStepped:Connect(function()
     end
 end)
 
---- ATTACH LOOP PERSISTENT CONTROLLER ---
-local function stopAttachLoop()
-    state.attach = "disabled"
-    attachBtn.BackgroundColor3 = COLOR_DISABLED
+--- FRUNK CONTROLLER (LOADS PASTEFIED R6/R15 LOOPS) ---
+local function stopFrunkLoop()
+    state.frunk = "disabled"
+    frunkBtn.BackgroundColor3 = COLOR_DISABLED
     
-    -- Automatically refreshes your character to safely break the Pastefy loops
+    -- Automatically refreshes character to safely break the background loop
     local char = lp.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
         local cf = char.HumanoidRootPart.CFrame
@@ -531,13 +531,13 @@ local function stopAttachLoop()
     end
 end
 
-local function startAttachLoop(targetPlayer)
+local function startFrunkLoop(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then return end
     
-    state.attach = "active"
-    attachBtn.BackgroundColor3 = COLOR_ACTIVE
+    state.frunk = "active"
+    frunkBtn.BackgroundColor3 = COLOR_ACTIVE
     
-    -- Assign target name to common global variables used by loadstring exploits
+    -- Set target variables globally for the Pastefy scripts
     if getgenv then getgenv().Victim = targetPlayer.Name end
     _G.Victim = targetPlayer.Name
     
@@ -545,7 +545,7 @@ local function startAttachLoop(targetPlayer)
     local hum = char and char:FindFirstChildWhichIsA("Humanoid")
     
     if hum then
-        -- Dynamic Rig Type Detection
+        -- Automatically run the correct setup based on your rig type
         if hum.RigType == Enum.HumanoidRigType.R6 then
             task.spawn(function()
                 pcall(function()
@@ -648,7 +648,7 @@ gotoBtn.MouseButton1Click:Connect(function()
         targetTitle.Text = " Action: Goto Target"
         gotoBtn.BackgroundColor3 = COLOR_ARMED
         specBtn.BackgroundColor3 = COLOR_DISABLED
-        attachBtn.BackgroundColor3 = COLOR_DISABLED
+        frunkBtn.BackgroundColor3 = COLOR_DISABLED
         targetBox:CaptureFocus()
     end
 end)
@@ -674,27 +674,27 @@ specBtn.MouseButton1Click:Connect(function()
             targetTitle.Text = " Action: Spectate"
             specBtn.BackgroundColor3 = COLOR_ARMED
             gotoBtn.BackgroundColor3 = COLOR_DISABLED
-            attachBtn.BackgroundColor3 = COLOR_DISABLED
+            frunkBtn.BackgroundColor3 = COLOR_DISABLED
             targetBox:CaptureFocus()
         end
     end
 end)
 
-attachBtn.MouseButton1Click:Connect(function()
-    if state.attach == "active" then
-        stopAttachLoop()
+frunkBtn.MouseButton1Click:Connect(function()
+    if state.frunk == "active" then
+        stopFrunkLoop()
         targetMenu.Visible = false
         activeTargetAction = nil
     else
-        if activeTargetAction == "attach" and targetMenu.Visible then
+        if activeTargetAction == "frunk" and targetMenu.Visible then
             targetMenu.Visible = false
             activeTargetAction = nil
-            attachBtn.BackgroundColor3 = COLOR_DISABLED
+            frunkBtn.BackgroundColor3 = COLOR_DISABLED
         else
             targetMenu.Visible = true
-            activeTargetAction = "attach"
-            targetTitle.Text = " Action: Attach Loop"
-            attachBtn.BackgroundColor3 = COLOR_ARMED
+            activeTargetAction = "frunk"
+            targetTitle.Text = " Action: Frunk"
+            frunkBtn.BackgroundColor3 = COLOR_ARMED
             gotoBtn.BackgroundColor3 = COLOR_DISABLED
             specBtn.BackgroundColor3 = COLOR_DISABLED
             targetBox:CaptureFocus()
@@ -722,8 +722,8 @@ targetBox.FocusLost:Connect(function(enterPressed)
                 end
                 targetMenu.Visible = false
                 activeTargetAction = nil
-            elseif activeTargetAction == "attach" then
-                startAttachLoop(t)
+            elseif activeTargetAction == "frunk" then
+                startFrunkLoop(t)
                 targetMenu.Visible = false
                 activeTargetAction = nil
             end
@@ -731,7 +731,7 @@ targetBox.FocusLost:Connect(function(enterPressed)
             targetMenu.Visible = false
             activeTargetAction = nil
             gotoBtn.BackgroundColor3 = COLOR_DISABLED
-            attachBtn.BackgroundColor3 = COLOR_DISABLED
+            frunkBtn.BackgroundColor3 = COLOR_DISABLED
             if state.spectate ~= "active" then specBtn.BackgroundColor3 = COLOR_DISABLED end
         end
         targetBox.Text = ""
