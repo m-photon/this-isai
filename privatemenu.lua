@@ -81,7 +81,7 @@ local activeTargetAction = nil
 
 local targetMenu = Instance.new("Frame")
 targetMenu.Size = UDim2.new(0, 200, 1, 0)
-targetMenu.Position = UDim2.new(0, -205, 0, 0) -- Perfectly mirrored on the left side
+targetMenu.Position = UDim2.new(0, -205, 0, 0) 
 targetMenu.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 targetMenu.BorderSizePixel = 0
 targetMenu.Visible = false
@@ -131,7 +131,7 @@ local targetHint = Instance.new("TextLabel")
 targetHint.Size = UDim2.new(1, -20, 0, 40)
 targetHint.Position = UDim2.new(0, 10, 0, 90)
 targetHint.BackgroundTransparency = 1
-targetHint.Text = "*Leave completely blank and press Enter to instantly target the closest player."
+targetHint.Text = "*Leave blank and press Enter to instantly target the closest player."
 targetHint.TextColor3 = Color3.fromRGB(130, 130, 130)
 targetHint.TextSize = 11
 targetHint.Font = Enum.Font.Code
@@ -548,7 +548,6 @@ refreshBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- LEFT SIDE MENU INTEGRATION FOR GOTO AND SPECTATE
 gotoBtn.MouseButton1Click:Connect(function()
     if activeTargetAction == "goto" and targetMenu.Visible then
         targetMenu.Visible = false
@@ -590,7 +589,6 @@ specBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- EXECUTION VIA THE TEXT BOX
 targetBox.FocusLost:Connect(function(enterPressed)
     if enterPressed then
         local t = getTargetPlayer()
@@ -708,8 +706,9 @@ uis.InputBegan:Connect(function(k, p)
     elseif k.KeyCode == Enum.KeyCode.V then
         if state.v == "armed" then ghostFling() end
     
-    elseif k.KeyCode == Enum.KeyCode.W then flyCtrl.F = 1
-    elseif k.KeyCode == Enum.KeyCode.S then flyCtrl.B = -1
+    -- FIXED FLIGHT WASD INPUT DIRECTIONS
+    elseif k.KeyCode == Enum.KeyCode.W then flyCtrl.F = -1
+    elseif k.KeyCode == Enum.KeyCode.S then flyCtrl.B = 1
     elseif k.KeyCode == Enum.KeyCode.A then flyCtrl.L = -1
     elseif k.KeyCode == Enum.KeyCode.D then flyCtrl.R = 1
     end
