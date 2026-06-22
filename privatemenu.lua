@@ -76,7 +76,71 @@ title.ZIndex = 2
 title.Active = false 
 title.Parent = topbar
 
---- PLAYER INTEL SIDE MENU ---
+--- DYNAMIC TARGET INPUT SIDE MENU (LEFT SIDE) ---
+local activeTargetAction = nil
+
+local targetMenu = Instance.new("Frame")
+targetMenu.Size = UDim2.new(0, 200, 1, 0)
+targetMenu.Position = UDim2.new(0, -205, 0, 0) -- Perfectly mirrored on the left side
+targetMenu.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+targetMenu.BorderSizePixel = 0
+targetMenu.Visible = false
+targetMenu.Parent = main
+
+local targetStroke = Instance.new("UIStroke")
+targetStroke.Color = Color3.fromRGB(45, 45, 45)
+targetStroke.Thickness = 1
+targetStroke.Parent = targetMenu
+
+local targetTitle = Instance.new("TextLabel")
+targetTitle.Size = UDim2.new(1, 0, 0, 30)
+targetTitle.BackgroundTransparency = 1
+targetTitle.Text = " Target Config"
+targetTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+targetTitle.TextSize = 14
+targetTitle.Font = Enum.Font.Code
+targetTitle.TextXAlignment = Enum.TextXAlignment.Left
+targetTitle.Parent = targetMenu
+
+local targetLine = Instance.new("Frame")
+targetLine.Size = UDim2.new(1, 0, 0, 1)
+targetLine.Position = UDim2.new(0, 0, 0, 30)
+targetLine.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+targetLine.BorderSizePixel = 0
+targetLine.Parent = targetMenu
+
+local targetBox = Instance.new("TextBox")
+targetBox.Size = UDim2.new(1, -20, 0, 36)
+targetBox.Position = UDim2.new(0, 10, 0, 45)
+targetBox.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+targetBox.BorderSizePixel = 0
+targetBox.Text = ""
+targetBox.PlaceholderText = "Type name & press Enter..."
+targetBox.TextColor3 = Color3.fromRGB(200, 200, 200)
+targetBox.TextSize = 12
+targetBox.Font = Enum.Font.Code
+targetBox.ZIndex = 2
+targetBox.Parent = targetMenu
+
+local boxStroke = Instance.new("UIStroke")
+boxStroke.Color = Color3.fromRGB(40, 40, 40)
+boxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+boxStroke.Parent = targetBox
+
+local targetHint = Instance.new("TextLabel")
+targetHint.Size = UDim2.new(1, -20, 0, 40)
+targetHint.Position = UDim2.new(0, 10, 0, 90)
+targetHint.BackgroundTransparency = 1
+targetHint.Text = "*Leave completely blank and press Enter to instantly target the closest player."
+targetHint.TextColor3 = Color3.fromRGB(130, 130, 130)
+targetHint.TextSize = 11
+targetHint.Font = Enum.Font.Code
+targetHint.TextXAlignment = Enum.TextXAlignment.Left
+targetHint.TextYAlignment = Enum.TextYAlignment.Top
+targetHint.TextWrapped = true
+targetHint.Parent = targetMenu
+
+--- PLAYER INTEL SIDE MENU (RIGHT SIDE) ---
 local sideOpen = false
 
 local sideMenu = Instance.new("Frame")
@@ -198,7 +262,7 @@ local function createBtn(name, text)
     return btn
 end
 
---- BUILDING THE UI LAYOUT (Streamlined Layout) ---
+--- BUILDING THE UI LAYOUT ---
 local iBtn = createBtn("iBtn", "Server Intel (Side Menu)")
 local eBtn = createBtn("eBtn", "Player ESP [E]")
 local tBtn = createBtn("tBtn", "Tracers [T]")
@@ -209,22 +273,6 @@ local speedBtn = createBtn("speedBtn", "Fast Walk")
 local jumpBtn = createBtn("jumpBtn", "High Jump")
 local ghostBtn = createBtn("ghostBtn", "Ghost Mode (Local Hide)")
 local refreshBtn = createBtn("refreshBtn", "Refresh Character")
-
-local targetBox = Instance.new("TextBox")
-targetBox.Size = UDim2.new(1, -5, 0, 30)
-targetBox.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-targetBox.BorderSizePixel = 0
-targetBox.Text = ""
-targetBox.PlaceholderText = "Enter Target Name..."
-targetBox.TextColor3 = Color3.fromRGB(200, 200, 200)
-targetBox.TextSize = 14
-targetBox.Font = Enum.Font.Code
-targetBox.ZIndex = 2
-targetBox.Parent = content
-local targetStroke = Instance.new("UIStroke")
-targetStroke.Color = Color3.fromRGB(40, 40, 40)
-targetStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-targetStroke.Parent = targetBox
 
 local gotoBtn = createBtn("gotoBtn", "Goto Target")
 local specBtn = createBtn("specBtn", "Spectate Target")
@@ -282,7 +330,15 @@ end
 
 local function getTargetPlayer()
     local txt = string.lower(targetBox.Text)
-    if txt == "" then return nil end
+    if txt == "" then 
+        if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+            local closestChar = getTarget(lp.Character.HumanoidRootPart)
+            if closestChar then
+                return plrs:GetPlayerFromCharacter(closestChar)
+            end
+        end
+        return nil 
+    end
     for _, p in pairs(plrs:GetPlayers()) do
         if string.sub(string.lower(p.Name), 1, #txt) == txt or string.sub(string.lower(p.DisplayName), 1, #txt) == txt then
             return p
@@ -492,29 +548,77 @@ refreshBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- LEFT SIDE MENU INTEGRATION FOR GOTO AND SPECTATE
 gotoBtn.MouseButton1Click:Connect(function()
-    local t = getTargetPlayer()
-    if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-        lp.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+    if activeTargetAction == "goto" and targetMenu.Visible then
+        targetMenu.Visible = false
+        activeTargetAction = nil
+        gotoBtn.BackgroundColor3 = COLOR_DISABLED
+    else
+        targetMenu.Visible = true
+        activeTargetAction = "goto"
+        targetTitle.Text = " Action: Goto Target"
+        gotoBtn.BackgroundColor3 = COLOR_ARMED
+        if state.spectate ~= "active" then specBtn.BackgroundColor3 = COLOR_DISABLED end
+        targetBox:CaptureFocus()
     end
 end)
 
 specBtn.MouseButton1Click:Connect(function()
-    if state.spectate == "disabled" then
-        local t = getTargetPlayer()
-        if t and t.Character and t.Character:FindFirstChild("Humanoid") then
-            cam.CameraSubject = t.Character.Humanoid
-            state.spectate = "active"
-            specBtn.BackgroundColor3 = COLOR_ACTIVE
-            specBtn.Text = "Stop Spectating"
-        end
-    else
+    if state.spectate == "active" then
         if lp.Character and lp.Character:FindFirstChild("Humanoid") then
             cam.CameraSubject = lp.Character.Humanoid
         end
         state.spectate = "disabled"
         specBtn.BackgroundColor3 = COLOR_DISABLED
         specBtn.Text = "Spectate Target"
+        targetMenu.Visible = false
+        activeTargetAction = nil
+    else
+        if activeTargetAction == "spectate" and targetMenu.Visible then
+            targetMenu.Visible = false
+            activeTargetAction = nil
+            specBtn.BackgroundColor3 = COLOR_DISABLED
+        else
+            targetMenu.Visible = true
+            activeTargetAction = "spectate"
+            targetTitle.Text = " Action: Spectate"
+            specBtn.BackgroundColor3 = COLOR_ARMED
+            gotoBtn.BackgroundColor3 = COLOR_DISABLED
+            targetBox:CaptureFocus()
+        end
+    end
+end)
+
+-- EXECUTION VIA THE TEXT BOX
+targetBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local t = getTargetPlayer()
+        if t then
+            if activeTargetAction == "goto" then
+                if t.Character and t.Character:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+                    lp.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+                end
+                targetMenu.Visible = false
+                activeTargetAction = nil
+                gotoBtn.BackgroundColor3 = COLOR_DISABLED
+            elseif activeTargetAction == "spectate" then
+                if t.Character and t.Character:FindFirstChild("Humanoid") then
+                    cam.CameraSubject = t.Character.Humanoid
+                    state.spectate = "active"
+                    specBtn.BackgroundColor3 = COLOR_ACTIVE
+                    specBtn.Text = "Stop Spectating"
+                end
+                targetMenu.Visible = false
+                activeTargetAction = nil
+            end
+        else
+            targetMenu.Visible = false
+            activeTargetAction = nil
+            gotoBtn.BackgroundColor3 = COLOR_DISABLED
+            if state.spectate ~= "active" then specBtn.BackgroundColor3 = COLOR_DISABLED end
+        end
+        targetBox.Text = ""
     end
 end)
 
