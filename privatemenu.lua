@@ -236,8 +236,6 @@ local state = {
     fling_running = false
 }
 
-local flyCtrl = {F = 0, B = 0, L = 0, R = 0}
-
 local COLOR_DISABLED = Color3.fromRGB(25, 25, 25)
 local COLOR_ARMED = Color3.fromRGB(55, 55, 75) 
 local COLOR_ACTIVE = Color3.fromRGB(35, 75, 35) 
@@ -437,6 +435,7 @@ rs.RenderStepped:Connect(function()
             if state.jump == "active" then hum.UseJumpPower = true; hum.JumpPower = 100 else hum.JumpPower = 50 end
         end
         
+        -- UPGRADED DIRECT-CHECK FLIGHT PHYSICS LOOP
         if state.fly == "active" and hrp and hum then
             hum.PlatformStand = true
             if not hrp:FindFirstChild("FlyVelocity") then
@@ -452,15 +451,20 @@ rs.RenderStepped:Connect(function()
             end
             local bv = hrp:FindFirstChild("FlyVelocity")
             local bg = hrp:FindFirstChild("FlyGyro")
-            local camCf = cam.CFrame
-            local moveDir = Vector3.new(flyCtrl.L + flyCtrl.R, 0, flyCtrl.F + flyCtrl.B)
+            
+            -- Read key vectors directly from the engine state to guarantee absolute direction accuracy
+            local moveDir = Vector3.zero
+            if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
+            if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
+            if uis:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
+            if uis:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
             
             if moveDir.Magnitude > 0 then
-                bv.Velocity = camCf:VectorToWorldSpace(moveDir * 100)
+                bv.Velocity = moveDir.Unit * 100
             else
                 bv.Velocity = Vector3.zero
             end
-            bg.CFrame = camCf
+            bg.CFrame = cam.CFrame
         else
             if hrp then
                 if hrp:FindFirstChild("FlyVelocity") then hrp.FlyVelocity:Destroy() end
@@ -705,21 +709,6 @@ uis.InputBegan:Connect(function(k, p)
         elseif state.t == "active" then state.t = "armed"; tStatus.Visible = false; tBtn.BackgroundColor3 = COLOR_ARMED end
     elseif k.KeyCode == Enum.KeyCode.V then
         if state.v == "armed" then ghostFling() end
-    
-    -- FIXED FLIGHT WASD INPUT DIRECTIONS
-    elseif k.KeyCode == Enum.KeyCode.W then flyCtrl.F = -1
-    elseif k.KeyCode == Enum.KeyCode.S then flyCtrl.B = 1
-    elseif k.KeyCode == Enum.KeyCode.A then flyCtrl.L = -1
-    elseif k.KeyCode == Enum.KeyCode.D then flyCtrl.R = 1
-    end
-end)
-
-uis.InputEnded:Connect(function(k, p)
-    if p then return end
-    if k.KeyCode == Enum.KeyCode.W then flyCtrl.F = 0
-    elseif k.KeyCode == Enum.KeyCode.S then flyCtrl.B = 0
-    elseif k.KeyCode == Enum.KeyCode.A then flyCtrl.L = 0
-    elseif k.KeyCode == Enum.KeyCode.D then flyCtrl.R = 0
     end
 end)
 
