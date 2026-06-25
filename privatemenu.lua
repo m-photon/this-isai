@@ -1,6 +1,5 @@
 -- nos_dywll private menu
 
-
 local uis = game:GetService("UserInputService")
 local plrs = game:GetService("Players")
 local rs = game:GetService("RunService")
@@ -221,9 +220,94 @@ local function createPopup(titleText, size, position)
     return frame
 end
 
--- Menus
+-- === BACKDOOR MENU ===
 local bdMenu = createPopup("Which backdoor to open?", UDim2.new(0, 280, 0, 135), UDim2.new(0.5, -140, 0.5, -67))
+
+local patrickBtn = Instance.new("TextButton")
+patrickBtn.Size = UDim2.new(0.5, -15, 0, 36)
+patrickBtn.Position = UDim2.new(0, 10, 0, 45)
+patrickBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+patrickBtn.Text = "Patrick"
+patrickBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+patrickBtn.Font = baseFont
+patrickBtn.ZIndex = 11
+patrickBtn.Parent = bdMenu
+Instance.new("UICorner", patrickBtn).CornerRadius = UDim.new(0, 4)
+Instance.new("UIStroke", patrickBtn).Color = strokeCol
+
+local spunchBtn = Instance.new("TextButton")
+spunchBtn.Size = UDim2.new(0.5, -15, 0, 36)
+spunchBtn.Position = UDim2.new(0.5, 5, 0, 45)
+spunchBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+spunchBtn.Text = "spunchbub"
+spunchBtn.TextColor3 = Color3.fromRGB(230, 220, 69)
+spunchBtn.Font = baseFont
+spunchBtn.ZIndex = 11
+spunchBtn.Parent = bdMenu
+Instance.new("UICorner", spunchBtn).CornerRadius = UDim.new(0, 4)
+Instance.new("UIStroke", spunchBtn).Color = strokeCol
+
+local closeBdBtn = Instance.new("TextButton")
+closeBdBtn.Size = UDim2.new(1, -20, 0, 28)
+closeBdBtn.Position = UDim2.new(0, 10, 1, -38)
+closeBdBtn.BackgroundColor3 = Color3.fromRGB(40, 25, 25)
+closeBdBtn.Text = "Cancel"
+closeBdBtn.TextColor3 = Color3.fromRGB(220, 100, 100)
+closeBdBtn.Font = baseFont
+closeBdBtn.ZIndex = 11
+closeBdBtn.Parent = bdMenu
+Instance.new("UICorner", closeBdBtn).CornerRadius = UDim.new(0, 4)
+Instance.new("UIStroke", closeBdBtn).Color = Color3.fromRGB(60,35,35)
+
+bdBtn.MouseButton1Click:Connect(function() bdMenu.Visible = not bdMenu.Visible end)
+closeBdBtn.MouseButton1Click:Connect(function() bdMenu.Visible = false end)
+
+-- === SERVER SIDE EXECUTOR ===
 local ssFrame = createPopup("Server Side Executor", UDim2.new(0, 340, 0, 240), UDim2.new(0.5, -170, 0.5, -120))
+
+local ssBox = Instance.new("TextBox")
+ssBox.Size = UDim2.new(1,-20,1,-90)
+ssBox.Position = UDim2.new(0,10,0,38)
+ssBox.BackgroundColor3 = Color3.fromRGB(15,15,17)
+ssBox.PlaceholderText = "-- paste server code"
+ssBox.TextColor3 = Color3.fromRGB(200,200,200)
+ssBox.MultiLine = true
+ssBox.ClearTextOnFocus = false
+ssBox.TextSize = 12
+ssBox.Font = baseFont
+ssBox.TextXAlignment = Enum.TextXAlignment.Left
+ssBox.TextYAlignment = Enum.TextYAlignment.Top
+ssBox.ZIndex = 11
+ssBox.Parent = ssFrame
+Instance.new("UICorner", ssBox).CornerRadius = UDim.new(0,4)
+Instance.new("UIStroke", ssBox).Color = strokeCol
+
+local execBtn = Instance.new("TextButton")
+execBtn.Size = UDim2.new(0.48,-5,0,32)
+execBtn.Position = UDim2.new(0,10,1,-42)
+execBtn.BackgroundColor3 = Color3.fromRGB(40,70,40)
+execBtn.Text = "Execute"
+execBtn.TextColor3 = Color3.fromRGB(220,255,220)
+execBtn.Font = baseFont
+execBtn.ZIndex = 11
+execBtn.Parent = ssFrame
+Instance.new("UICorner", execBtn).CornerRadius = UDim.new(0,4)
+
+local closeSS = Instance.new("TextButton")
+closeSS.Size = UDim2.new(0.48,-5,0,32)
+closeSS.Position = UDim2.new(0.52,5,1,-42)
+closeSS.BackgroundColor3 = Color3.fromRGB(70,30,30)
+closeSS.Text = "Close"
+closeSS.TextColor3 = Color3.fromRGB(255,180,180)
+closeSS.Font = baseFont
+closeSS.ZIndex = 11
+closeSS.Parent = ssFrame
+Instance.new("UICorner", closeSS).CornerRadius = UDim.new(0,4)
+
+bServerSide.MouseButton1Click:Connect(function() ssFrame.Visible = not ssFrame.Visible end)
+closeSS.MouseButton1Click:Connect(function() ssFrame.Visible = false end)
+
+-- Other Popups
 local tMenu = createPopup("Target Config", UDim2.new(0, 200, 1, 0), UDim2.new(0, -210, 0, 0))
 local sMenu = createPopup("Server Intel", UDim2.new(0, 200, 1, 0), UDim2.new(1, 10, 0, 0))
 
@@ -282,9 +366,6 @@ bI.MouseButton1Click:Connect(function()
     if sideOpen then refreshIntel() end
 end)
 
-bdBtn.MouseButton1Click:Connect(function() bdMenu.Visible = not bdMenu.Visible end)
-bServerSide.MouseButton1Click:Connect(function() ssFrame.Visible = not ssFrame.Visible end)
-
 -- Feature Toggle Logic
 local function tog(btn, key, callback)
     btn.MouseButton1Click:Connect(function()
@@ -332,7 +413,7 @@ bEspHub.MouseButton1Click:Connect(function() safeLoad('https://raw.githubusercon
 bRejoin.MouseButton1Click:Connect(function() ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, lp) end)
 bHop.MouseButton1Click:Connect(function() ts:Teleport(game.PlaceId, lp) end)
 
--- ESP System (Memory Leak Patched)
+-- ESP System (Bug Patched - Adornee Updates Per Frame)
 local espFolder = Instance.new("Folder", core)
 espFolder.Name = "nos_esp_folder"
 
@@ -348,23 +429,24 @@ local function upESP()
             v:Destroy() 
         end
     end
-    -- Create new ones
+    -- Create new ones and forcefully update existing Adornees
     for _,p in pairs(plrs:GetPlayers()) do
         if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            if not espFolder:FindFirstChild(p.Name) then
-                local hl = Instance.new("Highlight")
+            local hl = espFolder:FindFirstChild(p.Name)
+            if not hl then
+                hl = Instance.new("Highlight")
                 hl.Name = p.Name
                 hl.FillColor = Color3.fromRGB(255,50,50)
                 hl.OutlineColor = Color3.fromRGB(255,255,255)
                 hl.DepthMode = "AlwaysOnTop"
                 hl.Parent = espFolder
-                hl.Adornee = p.Character
             end
+            hl.Adornee = p.Character -- Fixed: This now runs every frame so respawns don't break ESP
         end
     end
 end
 
--- Tracer System (Drawing Library Safe)
+-- Tracer System 
 local lines = {}
 local hasDraw = false
 pcall(function() 
@@ -406,10 +488,10 @@ plrs.PlayerRemoving:Connect(function(p)
     if lines[p] then pcall(function() lines[p]:Remove() end) lines[p]=nil end
 end)
 
--- Main Background Loop (Optimized to prevent crashing)
+-- Main Background Loop 
 task.spawn(function()
     while true do
-        task.wait(0.05) -- Keeps loop from freezing client
+        task.wait(0.05) 
         pcall(upESP)
         pcall(upTracers)
         
@@ -560,25 +642,41 @@ local function doFling()
             pcall(function() bav:Destroy() bv:Destroy() end)
             if hrp then hrp.CFrame = oldcf end
             state.fling = false
-            bV.BackgroundColor3 = colOff
+            bV.BackgroundColor3 = colArmed -- Fixed: Used to revert to colOff and break visual flow
             return
         end
         hrp.CFrame = tp.CFrame * CFrame.new(math.random(-1,1)*0.05, math.random(-1,1)*0.05, math.random(-1,1)*0.05)
     end)
 end
 
--- Keybinds
+-- === KEYBINDS LOGIC (FIXED) ===
 uis.InputBegan:Connect(function(k, g)
     if g then return end
+    
     if k.KeyCode == Enum.KeyCode.E then
-        if state.e == "armed" then state.e = "active"; bE.BackgroundColor3 = colOn end
+        if state.e == "armed" then 
+            state.e = "active"
+            bE.BackgroundColor3 = colOn 
+        elseif state.e == "active" then
+            state.e = "armed"
+            bE.BackgroundColor3 = colArmed
+        end
     elseif k.KeyCode == Enum.KeyCode.T then
-        if state.t == "armed" then state.t = "active"; bT.BackgroundColor3 = colOn end
+        if state.t == "armed" then 
+            state.t = "active"
+            bT.BackgroundColor3 = colOn 
+        elseif state.t == "active" then
+            state.t = "armed"
+            bT.BackgroundColor3 = colArmed
+        end
     elseif k.KeyCode == Enum.KeyCode.V then
-        if state.v == "armed" then doFling() end
+        if state.v == "armed" then 
+            doFling() 
+        end
     end
 end)
 
+-- Button toggles for the Armed states
 bE.MouseButton1Click:Connect(function() state.e = state.e == "disabled" and "armed" or "disabled"; bE.BackgroundColor3 = state.e == "armed" and colArmed or colOff end)
 bT.MouseButton1Click:Connect(function() state.t = state.t == "disabled" and "armed" or "disabled"; bT.BackgroundColor3 = state.t == "armed" and colArmed or colOff end)
 bV.MouseButton1Click:Connect(function() state.v = state.v == "disabled" and "armed" or "disabled"; bV.BackgroundColor3 = state.v == "armed" and colArmed or colOff end)
@@ -612,4 +710,4 @@ uis.InputChanged:Connect(function(input)
 end)
 
 closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
-print("nos_dywll loaded - Master Version (Crash-Proof)")
+print("nos_dywll loaded - Keybinds Patched")
