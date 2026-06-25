@@ -1,5 +1,4 @@
--- nos_dywll private menu | larpwtf (FLY ENGINE FIXED)
--- discord.gg/larpwtf
+-- nos_dywll private menu
 
 local uis = game:GetService("UserInputService")
 local plrs = game:GetService("Players")
@@ -8,26 +7,27 @@ local ts = game:GetService("TeleportService")
 local ws = game:GetService("Workspace")
 local lighting = game:GetService("Lighting")
 local lp = plrs.LocalPlayer
-local cam = ws.CurrentCamera
 
+-- Safely acquire CoreGui
 local core
 if gethui then 
     core = gethui()
 elseif syn and syn.protect_gui then 
-    core = lp:WaitForChild("PlayerGui")
+    core = lp:WaitForChild("PlayerGui", 5) or game:GetService("CoreGui")
 else 
-    core = game:GetService("CoreGui") or lp:WaitForChild("PlayerGui") 
+    core = game:GetService("CoreGui") or lp:WaitForChild("PlayerGui", 5) 
 end
 
 if core:FindFirstChild("nos_dywll_PrivateMenu") then
     pcall(function() core.nos_dywll_PrivateMenu:Destroy() end)
 end
 
+-- === 1. MAIN GUI INITIALIZATION ===
 local sg = Instance.new("ScreenGui")
 sg.Name = "nos_dywll_PrivateMenu"
 sg.ResetOnSpawn = false
 sg.ZIndexBehavior = Enum.ZIndexBehavior.Global
-sg.DisplayOrder = 9999
+sg.DisplayOrder = 99999
 sg.Parent = core
 
 local bgCol = Color3.fromRGB(22, 22, 24)
@@ -129,6 +129,7 @@ local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 6)
 layout.Parent = content
 
+-- === 2. STATE & BUTTON REGISTRY ===
 local state = {
     e="disabled", t="disabled", v="disabled", fly="disabled", speed="disabled",
     jump="disabled", ghost="disabled", spectate="disabled", frunk="disabled", 
@@ -188,15 +189,11 @@ for i,v in ipairs(btns) do v.LayoutOrder = i end
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
     local f = searchBox.Text:lower()
     for _,b in pairs(btns) do
-        if f == "" then
-            b.Visible = true
-        else
-            b.Visible = string.find(b.Text:lower(), f, 1, true) ~= nil
-        end
+        b.Visible = (f == "" or string.find(b.Text:lower(), f, 1, true) ~= nil)
     end
 end)
 
--- Popups Framework
+-- === 3. POPUPS & MENUS ===
 local function createPopup(titleText, size, position)
     local frame = Instance.new("Frame")
     frame.Size = size
@@ -217,11 +214,10 @@ local function createPopup(titleText, size, position)
     titleL.Font = baseFont
     titleL.ZIndex = 11
     titleL.Parent = frame
-    
     return frame
 end
 
--- === BACKDOOR MENU ===
+-- Backdoor Menu
 local bdMenu = createPopup("Which backdoor to open?", UDim2.new(0, 280, 0, 135), UDim2.new(0.5, -140, 0.5, -67))
 
 local patrickBtn = Instance.new("TextButton")
@@ -273,7 +269,7 @@ spunchBtn.MouseButton1Click:Connect(function()
     bdMenu.Visible = false
 end)
 
--- === SERVER SIDE EXECUTOR ===
+-- Server Side Executor
 local ssFrame = createPopup("Server Side Executor", UDim2.new(0, 340, 0, 240), UDim2.new(0.5, -170, 0.5, -120))
 
 local ssBox = Instance.new("TextBox")
@@ -322,18 +318,12 @@ execBtn.MouseButton1Click:Connect(function()
     local code = ssBox.Text
     if code and code ~= "" then
         local func, err = loadstring(code)
-        if func then
-            pcall(func)
-        else
-            warn("Execution Error:", err)
-        end
+        if func then pcall(func) else warn("Execution Error:", err) end
     end
 end)
 
--- Other Popups
+-- Target Menu
 local tMenu = createPopup("Target Config", UDim2.new(0, 200, 1, 0), UDim2.new(0, -210, 0, 0))
-local sMenu = createPopup("Server Intel", UDim2.new(0, 200, 1, 0), UDim2.new(1, 10, 0, 0))
-
 local tBox = Instance.new("TextBox")
 tBox.Size = UDim2.new(1, -20, 0, 36)
 tBox.Position = UDim2.new(0, 10, 0, 45)
@@ -346,7 +336,10 @@ tBox.ZIndex = 11
 tBox.Parent = tMenu
 Instance.new("UICorner", tBox).CornerRadius = UDim.new(0, 4)
 Instance.new("UIStroke", tBox).Color = strokeCol
+local targetAction = nil
 
+-- Server Intel Menu
+local sMenu = createPopup("Server Intel", UDim2.new(0, 200, 1, 0), UDim2.new(1, 10, 0, 0))
 local sScroll = Instance.new("ScrollingFrame")
 sScroll.Size = UDim2.new(1, -10, 1, -35)
 sScroll.Position = UDim2.new(0, 5, 0, 35)
@@ -356,8 +349,6 @@ sScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 sScroll.ZIndex = 11
 sScroll.Parent = sMenu
 Instance.new("UIListLayout", sScroll).Padding = UDim.new(0, 4)
-
-local targetAction = nil
 local sideOpen = false
 
 local function refreshIntel()
@@ -387,7 +378,7 @@ bI.MouseButton1Click:Connect(function()
     if sideOpen then refreshIntel() end
 end)
 
--- Feature Toggle Logic
+-- === 4. FEATURE TOGGLE REGISTRY ===
 local function tog(btn, key, callback)
     btn.MouseButton1Click:Connect(function()
         if state[key] == "disabled" then
@@ -433,7 +424,7 @@ bEspHub.MouseButton1Click:Connect(function() safeLoad('https://raw.githubusercon
 bRejoin.MouseButton1Click:Connect(function() ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, lp) end)
 bHop.MouseButton1Click:Connect(function() ts:Teleport(game.PlaceId, lp) end)
 
--- ESP System 
+-- === 5. CORE EXPLOIT SYSTEMS ===
 local espFolder = Instance.new("Folder", core)
 espFolder.Name = "nos_esp_folder"
 
@@ -464,19 +455,15 @@ local function upESP()
     end
 end
 
--- Tracer System 
 local lines = {}
-local hasDraw = false
-pcall(function() 
-    local t = Drawing.new("Line")
-    if t then hasDraw = true; t:Remove() end
-end)
+local hasDraw = pcall(function() local t = Drawing.new("Line"); if t then t:Remove() end end)
 
 local function upTracers()
     if not hasDraw or state.t ~= "active" then
         for _,v in pairs(lines) do pcall(function() v.Visible = false end) end
         return
     end
+    local currentCam = ws.CurrentCamera -- Dynamically checked to prevent respawn breakage
     for _,p in pairs(plrs:GetPlayers()) do
         if p ~= lp then
             if not lines[p] then
@@ -489,10 +476,10 @@ local function upTracers()
             end
             local l = lines[p]
             if l then
-                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local pos, vis = cam:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and currentCam then
+                    local pos, vis = currentCam:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
                     if vis then
-                        l.From = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y)
+                        l.From = Vector2.new(currentCam.ViewportSize.X/2, currentCam.ViewportSize.Y)
                         l.To = Vector2.new(pos.X, pos.Y)
                         l.Visible = true
                     else l.Visible = false end
@@ -506,7 +493,7 @@ plrs.PlayerRemoving:Connect(function(p)
     if lines[p] then pcall(function() lines[p]:Remove() end) lines[p]=nil end
 end)
 
--- Main Background Loop 
+-- Main Optimization Loop
 task.spawn(function()
     while true do
         task.wait(0.05) 
@@ -531,14 +518,13 @@ rs.Stepped:Connect(function()
     end
 end)
 
--- === ROBUST FLY ENGINE FIX ===
 local flySpeed = 50
 rs.RenderStepped:Connect(function()
-    if state.fly == "active" and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character:FindFirstChildOfClass("Humanoid") then
+    local currentCam = ws.CurrentCamera
+    if state.fly == "active" and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character:FindFirstChildOfClass("Humanoid") and currentCam then
         local hrp = lp.Character.HumanoidRootPart
         local hum = lp.Character:FindFirstChildOfClass("Humanoid")
         
-        -- Secure the player's physical state in the air
         local bv = hrp:FindFirstChild("NosFlyBv")
         local bg = hrp:FindFirstChild("NosFlyBg")
         
@@ -557,18 +543,17 @@ rs.RenderStepped:Connect(function()
             bg.Parent = hrp
         end
         
-        hum.PlatformStand = true -- Prevents the physics engine from applying falling animations
+        hum.PlatformStand = true 
         
         local moveDir = Vector3.new(0,0,0)
-        if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
-        if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
-        if uis:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
-        if uis:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + currentCam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - currentCam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - currentCam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + currentCam.CFrame.RightVector end
         
-        bg.CFrame = cam.CFrame
+        bg.CFrame = currentCam.CFrame
         bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * flySpeed or Vector3.new(0,0,0)
     else
-        -- Cleanly strip the flight items if disabled or dead
         if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
             local hrp = lp.Character.HumanoidRootPart
             local hum = lp.Character:FindFirstChildOfClass("Humanoid")
@@ -577,14 +562,11 @@ rs.RenderStepped:Connect(function()
             
             if bv then bv:Destroy() end
             if bg then bg:Destroy() end
-            if hum and state.fly == "disabled" then 
-                hum.PlatformStand = false 
-            end
+            if hum and state.fly == "disabled" then hum.PlatformStand = false end
         end
     end
 end)
 
--- Ghost Mode
 bGhost.MouseButton1Click:Connect(function()
     state.ghost = state.ghost == "disabled" and "active" or "disabled"
     bGhost.BackgroundColor3 = state.ghost == "active" and colOn or colOff
@@ -637,8 +619,11 @@ bGoto.MouseButton1Click:Connect(function()
 end)
 
 bSpec.MouseButton1Click:Connect(function()
+    local currentCam = ws.CurrentCamera
     if state.spectate == "active" then
-        if lp.Character and lp.Character:FindFirstChild("Humanoid") then cam.CameraSubject = lp.Character.Humanoid end
+        if lp.Character and lp.Character:FindFirstChild("Humanoid") and currentCam then 
+            currentCam.CameraSubject = lp.Character.Humanoid 
+        end
         state.spectate = "disabled"; bSpec.BackgroundColor3 = colOff; bSpec.Text = "Spectate Target"; tMenu.Visible = false; targetAction = nil
     else
         if targetAction == "spectate" and tMenu.Visible then
@@ -650,13 +635,14 @@ bSpec.MouseButton1Click:Connect(function()
 end)
 
 tBox.FocusLost:Connect(function(ent)
+    local currentCam = ws.CurrentCamera
     if ent then
         local t = getPlr()
         if t then
             if targetAction == "goto" and t.Character and lp.Character then
                 lp.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-            elseif targetAction == "spectate" and t.Character then
-                cam.CameraSubject = t.Character.Humanoid
+            elseif targetAction == "spectate" and t.Character and currentCam then
+                currentCam.CameraSubject = t.Character.Humanoid
                 state.spectate = "active"
                 bSpec.BackgroundColor3 = colOn
                 bSpec.Text = "Stop Spectating"
@@ -666,7 +652,6 @@ tBox.FocusLost:Connect(function(ent)
     end
 end)
 
--- Crash-Proof Fling Logic
 local function doFling()
     if state.v ~= "armed" or state.fling then return end
     local c = lp.Character
@@ -705,30 +690,17 @@ local function doFling()
     end)
 end
 
--- KEYBINDS LOGIC
+-- === 6. INPUT AND BINDS ===
 uis.InputBegan:Connect(function(k, g)
     if g then return end
-    
     if k.KeyCode == Enum.KeyCode.E then
-        if state.e == "armed" then 
-            state.e = "active"
-            bE.BackgroundColor3 = colOn 
-        elseif state.e == "active" then
-            state.e = "armed"
-            bE.BackgroundColor3 = colArmed
-        end
+        if state.e == "armed" then state.e = "active"; bE.BackgroundColor3 = colOn 
+        elseif state.e == "active" then state.e = "armed"; bE.BackgroundColor3 = colArmed end
     elseif k.KeyCode == Enum.KeyCode.T then
-        if state.t == "armed" then 
-            state.t = "active"
-            bT.BackgroundColor3 = colOn 
-        elseif state.t == "active" then
-            state.t = "armed"
-            bT.BackgroundColor3 = colArmed
-        end
+        if state.t == "armed" then state.t = "active"; bT.BackgroundColor3 = colOn 
+        elseif state.t == "active" then state.t = "armed"; bT.BackgroundColor3 = colArmed end
     elseif k.KeyCode == Enum.KeyCode.V then
-        if state.v == "armed" then 
-            doFling() 
-        end
+        if state.v == "armed" then doFling() end
     end
 end)
 
@@ -736,7 +708,6 @@ bE.MouseButton1Click:Connect(function() state.e = state.e == "disabled" and "arm
 bT.MouseButton1Click:Connect(function() state.t = state.t == "disabled" and "armed" or "disabled"; bT.BackgroundColor3 = state.t == "armed" and colArmed or colOff end)
 bV.MouseButton1Click:Connect(function() state.v = state.v == "disabled" and "armed" or "disabled"; bV.BackgroundColor3 = state.v == "armed" and colArmed or colOff end)
 
--- Smooth Dragging System
 local dragging = false
 local dragInput, dragStart, startPos
 
@@ -765,4 +736,4 @@ uis.InputChanged:Connect(function(input)
 end)
 
 closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
-print("nos_dywll loaded - Flight Engine Perfected")
+print("nos_dywll loaded - Deduplicated and Hardened")
