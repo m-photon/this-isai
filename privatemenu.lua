@@ -1,739 +1,126 @@
--- nos_dywll private menu
+-- Dywyll Cmenu v4.5 CLEAN | larpwtf
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local uis = game:GetService("UserInputService")
-local plrs = game:GetService("Players")
-local rs = game:GetService("RunService")
-local ts = game:GetService("TeleportService")
-local ws = game:GetService("Workspace")
-local lighting = game:GetService("Lighting")
-local lp = plrs.LocalPlayer
+local Window = Rayfield:CreateWindow({
+    Name = "Dywyll Cmenu v4.5",
+    LoadingTitle = "Dywyll Cmenu",
+    LoadingSubtitle = "Chaos Edition",
+    ConfigurationSaving = { Enabled = true, FolderName = "DywyllCmenu", FileName = "Config" },
+    Discord = { Enabled = true, Invite = "larpwtf", RememberJoins = true },
+    KeySystem = false
+})
 
--- Safely acquire CoreGui
-local core
-if gethui then 
-    core = gethui()
-elseif syn and syn.protect_gui then 
-    core = lp:WaitForChild("PlayerGui", 5) or game:GetService("CoreGui")
-else 
-    core = game:GetService("CoreGui") or lp:WaitForChild("PlayerGui", 5) 
-end
+local MainTab = Window:CreateTab("Main", 4483362458)
+local CombatTab = Window:CreateTab("Combat", 4483362458)
+local MovementTab = Window:CreateTab("Movement", 4483362458)
+local VisualsTab = Window:CreateTab("Visuals", 4483362458)
+local TeleportTab = Window:CreateTab("Teleport", 4483362458)
+local MiscTab = Window:CreateTab("Misc", 4483362458)
+local TrollTab = Window:CreateTab("Troll", 4483362458)
+local ExploitsTab = Window:CreateTab("Exploits", 4483362458)
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
 
-if core:FindFirstChild("nos_dywll_PrivateMenu") then
-    pcall(function() core.nos_dywll_PrivateMenu:Destroy() end)
-end
+-- ==================== MAIN ====================
+MainTab:CreateSection("Core")
 
--- === 1. MAIN GUI INITIALIZATION ===
-local sg = Instance.new("ScreenGui")
-sg.Name = "nos_dywll_PrivateMenu"
-sg.ResetOnSpawn = false
-sg.ZIndexBehavior = Enum.ZIndexBehavior.Global
-sg.DisplayOrder = 99999
-sg.Parent = core
+MainTab:CreateToggle({ Name = "Godmode", CurrentValue = false, Flag = "Godmode", Callback = function(v) end })
+MainTab:CreateButton({ Name = "Infinite Yield (Admin)", Callback = function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end })
+MainTab:CreateToggle({ Name = "Anti Kick", CurrentValue = false, Flag = "AntiKick", Callback = function(v) end })
 
-local bgCol = Color3.fromRGB(22, 22, 24)
-local strokeCol = Color3.fromRGB(60, 60, 65)
-local baseFont = Enum.Font.Gotham
+-- ==================== COMBAT ====================
+CombatTab:CreateSection("Combat")
 
-local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 520, 0, 360)
-main.Position = UDim2.new(0.5, -260, 0.5, -180)
-main.BackgroundColor3 = bgCol
-main.BorderSizePixel = 0
-main.Active = true
-main.ZIndex = 1
-main.Parent = sg
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", main).Color = strokeCol
+CombatTab:CreateToggle({ Name = "Silent Aim", CurrentValue = false, Flag = "SilentAim", Callback = function(v) end })
+CombatTab:CreateToggle({ Name = "Triggerbot", CurrentValue = false, Flag = "Triggerbot", Callback = function(v) end })
+CombatTab:CreateToggle({ Name = "Kill Aura", CurrentValue = false, Flag = "KillAura", Callback = function(v) end })
+CombatTab:CreateToggle({ Name = "Reach", CurrentValue = false, Flag = "Reach", Callback = function(v) end })
+CombatTab:CreateToggle({ Name = "Ragebot", CurrentValue = false, Flag = "Ragebot", Callback = function(v) end })
+CombatTab:CreateToggle({ Name = "Auto Clicker", CurrentValue = false, Flag = "AutoClicker", Callback = function(v) end })
+CombatTab:CreateSlider({ Name = "Hitbox Expander", Range = {1, 50}, Increment = 1, CurrentValue = 1, Flag = "Hitbox", Callback = function(v) end })
 
-local topbar = Instance.new("Frame")
-topbar.Size = UDim2.new(1, -12, 0, 30)
-topbar.Position = UDim2.new(0, 6, 0, 6)
-topbar.BackgroundColor3 = Color3.fromRGB(26, 26, 28)
-topbar.BorderSizePixel = 0
-topbar.ZIndex = 2
-topbar.Active = true
-topbar.Parent = main
-Instance.new("UICorner", topbar).CornerRadius = UDim.new(0, 5)
-Instance.new("UIStroke", topbar).Color = strokeCol
+-- ==================== MOVEMENT ====================
+MovementTab:CreateSection("Movement")
 
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -40, 1, 0)
-title.Position = UDim2.new(0, 10, 0, 0)
-title.BackgroundTransparency = 1
-title.RichText = true
-title.Text = '<i><font color="#E6DC45">Nos_dywll</font></i> - Private Menu'
-title.TextColor3 = Color3.fromRGB(240, 240, 240)
-title.TextSize = 14
-title.Font = Enum.Font.GothamMedium
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.ZIndex = 3
-title.Parent = topbar
+MovementTab:CreateToggle({ Name = "Fly", CurrentValue = false, Flag = "Fly", Callback = function(v) end })
+MovementTab:CreateToggle({ Name = "Noclip", CurrentValue = false, Flag = "Noclip", Callback = function(v) end })
+MovementTab:CreateToggle({ Name = "Infinite Jump", CurrentValue = false, Flag = "InfJump", Callback = function(v) end })
+MovementTab:CreateToggle({ Name = "Bunny Hop", CurrentValue = false, Flag = "Bhop", Callback = function(v) end })
 
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 20, 0, 20)
-closeBtn.Position = UDim2.new(1, -25, 0.5, -10)
-closeBtn.BackgroundTransparency = 1
-closeBtn.Text = "✕"
-closeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-closeBtn.TextSize = 16
-closeBtn.Font = Enum.Font.Gotham
-closeBtn.ZIndex = 4
-closeBtn.Parent = topbar
+MovementTab:CreateSlider({ Name = "WalkSpeed", Range = {16, 500}, Increment = 1, CurrentValue = 16, Flag = "WalkSpeed", Callback = function(v)
+    local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum then hum.WalkSpeed = v end
+end })
 
-local contentBox = Instance.new("Frame")
-contentBox.Size = UDim2.new(1, -12, 1, -50)
-contentBox.Position = UDim2.new(0, 6, 0, 42)
-contentBox.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
-contentBox.ZIndex = 2
-contentBox.Parent = main
-Instance.new("UICorner", contentBox).CornerRadius = UDim.new(0, 5)
-Instance.new("UIStroke", contentBox).Color = strokeCol
+MovementTab:CreateSlider({ Name = "JumpPower", Range = {50, 500}, Increment = 5, CurrentValue = 50, Flag = "JumpPower", Callback = function(v)
+    local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum then hum.JumpPower = v end
+end })
 
-local searchBox = Instance.new("TextBox")
-searchBox.Size = UDim2.new(1, -160, 0, 28)
-searchBox.Position = UDim2.new(0, 10, 0, 8)
-searchBox.BackgroundColor3 = Color3.fromRGB(15, 15, 17)
-searchBox.PlaceholderText = "Search features..."
-searchBox.TextColor3 = Color3.fromRGB(220, 220, 220)
-searchBox.TextSize = 12
-searchBox.Font = baseFont
-searchBox.ZIndex = 3
-searchBox.ClearTextOnFocus = false
-searchBox.Parent = contentBox
-Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", searchBox).Color = strokeCol
+-- ==================== VISUALS ====================
+VisualsTab:CreateSection("Visuals")
 
-local bdBtn = Instance.new("TextButton")
-bdBtn.Size = UDim2.new(0, 130, 0, 28)
-bdBtn.Position = UDim2.new(1, -140, 0, 8)
-bdBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-bdBtn.Text = "Skid Backdoors"
-bdBtn.TextColor3 = Color3.fromRGB(230, 220, 69)
-bdBtn.TextSize = 12
-bdBtn.Font = baseFont
-bdBtn.ZIndex = 4
-bdBtn.Parent = contentBox
-Instance.new("UICorner", bdBtn).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", bdBtn).Color = strokeCol
+VisualsTab:CreateToggle({ Name = "Full ESP", CurrentValue = false, Flag = "FullESP", Callback = function(v) end })
+VisualsTab:CreateToggle({ Name = "Chams / Wallhack", CurrentValue = false, Flag = "Chams", Callback = function(v) end })
+VisualsTab:CreateColorPicker({ Name = "ESP Color", Color = Color3.fromRGB(255,0,0), Flag = "ESPColor", Callback = function(c) end })
+VisualsTab:CreateToggle({ Name = "No Fog", CurrentValue = false, Flag = "NoFog", Callback = function(v) 
+    game.Lighting.FogEnd = v and 99999 or 100000 
+end })
 
-local content = Instance.new("ScrollingFrame")
-content.Size = UDim2.new(1, -20, 1, -50)
-content.Position = UDim2.new(0, 10, 0, 44)
-content.BackgroundTransparency = 1
-content.ScrollBarThickness = 3
-content.Active = true
-content.ZIndex = 3
-content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-content.Parent = contentBox
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 6)
-layout.Parent = content
-
--- === 2. STATE & BUTTON REGISTRY ===
-local state = {
-    e="disabled", t="disabled", v="disabled", fly="disabled", speed="disabled",
-    jump="disabled", ghost="disabled", spectate="disabled", frunk="disabled", 
-    noclip="disabled", god="disabled", fullbright="disabled", nofog="disabled",
-    hitbox="disabled", fling=false
-}
-
-local colOff = Color3.fromRGB(28, 28, 32)
-local colArmed = Color3.fromRGB(60, 60, 80)
-local colOn = Color3.fromRGB(45, 85, 45)
-local btns = {}
-
-local function mkbtn(id, txt)
-    local b = Instance.new("TextButton")
-    b.Name = id
-    b.Size = UDim2.new(1, 0, 0, 34)
-    b.BackgroundColor3 = colOff
-    b.Text = txt
-    b.TextColor3 = Color3.fromRGB(210, 210, 210)
-    b.TextSize = 13
-    b.Font = baseFont
-    b.ZIndex = 4
-    b.Parent = content
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
-    Instance.new("UIStroke", b).Color = strokeCol
-    table.insert(btns, b)
-    return b
-end
-
-local bV = mkbtn("bV", "Execute Fling [V]")
-local bSpeed = mkbtn("bSpeed", "Fast Walk")
-local bFly = mkbtn("bFly", "Flight (WASD)")
-local bFrunk = mkbtn("bFrunk", "Frunk")
-local bGhost = mkbtn("bGhost", "Ghost Mode")
-local bGoto = mkbtn("bGoto", "Goto Target")
-local bJump = mkbtn("bJump", "High Jump")
-local bDex = mkbtn("bDex", "Load Dex Explorer")
-local bIY = mkbtn("bIY", "Load Infinite Yield")
-local bEspHub = mkbtn("bEspHub", "Load Unnamed ESP")
-local bNoclip = mkbtn("bNoclip", "Noclip")
-local bE = mkbtn("bE", "Player ESP [E]")
-local bT = mkbtn("bT", "Player Tracers [T]")
-local bGod = mkbtn("bGod", "Godmode")
-local bFullbright = mkbtn("bFullbright", "Fullbright")
-local bNoFog = mkbtn("bNoFog", "No Fog")
-local bHitbox = mkbtn("bHitbox", "Hitbox Expander")
-local bRefresh = mkbtn("bRefresh", "Refresh Character")
-local bRejoin = mkbtn("bRejoin", "Rejoin Server")
-local bHop = mkbtn("bHop", "Server Hop")
-local bI = mkbtn("bI", "Server Intel")
-local bSpec = mkbtn("bSpec", "Spectate Target")
-local bServerSide = mkbtn("bServerSide", "Server Side Executor")
-
-table.sort(btns, function(a,b) return a.Text < b.Text end)
-for i,v in ipairs(btns) do v.LayoutOrder = i end
-
-searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-    local f = searchBox.Text:lower()
-    for _,b in pairs(btns) do
-        b.Visible = (f == "" or string.find(b.Text:lower(), f, 1, true) ~= nil)
+-- ==================== TELEPORT ====================
+TeleportTab:CreateSection("Teleport")
+TeleportTab:CreateButton({ Name = "Teleport to Random Player", Callback = function()
+    local plrs = game.Players:GetPlayers()
+    local tgt = plrs[math.random(1, #plrs)]
+    if tgt and tgt.Character and tgt.Character:FindFirstChild("HumanoidRootPart") then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = tgt.Character.HumanoidRootPart.CFrame
     end
-end)
+end })
+TeleportTab:CreateButton({ Name = "Server Hop", Callback = function() game.TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer) end })
 
--- === 3. POPUPS & MENUS ===
-local function createPopup(titleText, size, position)
-    local frame = Instance.new("Frame")
-    frame.Size = size
-    frame.Position = position
-    frame.BackgroundColor3 = bgCol
-    frame.ZIndex = 10
-    frame.Visible = false
-    frame.Parent = main
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", frame).Color = strokeCol
-    
-    local titleL = Instance.new("TextLabel")
-    titleL.Size = UDim2.new(1, 0, 0, 35)
-    titleL.BackgroundTransparency = 1
-    titleL.Text = titleText
-    titleL.TextColor3 = Color3.fromRGB(230, 230, 230)
-    titleL.TextSize = 13
-    titleL.Font = baseFont
-    titleL.ZIndex = 11
-    titleL.Parent = frame
-    return frame
-end
+-- ==================== MISC ====================
+MiscTab:CreateSection("Misc")
 
--- Backdoor Menu
-local bdMenu = createPopup("Which backdoor to open?", UDim2.new(0, 280, 0, 135), UDim2.new(0.5, -140, 0.5, -67))
+MiscTab:CreateToggle({ Name = "Chat Spam", CurrentValue = false, Flag = "ChatSpam", Callback = function(v) end })
+MiscTab:CreateToggle({ Name = "Spinbot", CurrentValue = false, Flag = "Spinbot", Callback = function(v) end })
+MiscTab:CreateToggle({ Name = "Fake Lag", CurrentValue = false, Flag = "FakeLag", Callback = function(v) end })
+MiscTab:CreateToggle({ Name = "Anti-AFK", CurrentValue = true, Flag = "AntiAFK", Callback = function(v) end })
 
-local patrickBtn = Instance.new("TextButton")
-patrickBtn.Size = UDim2.new(0.5, -15, 0, 36)
-patrickBtn.Position = UDim2.new(0, 10, 0, 45)
-patrickBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-patrickBtn.Text = "Patrick"
-patrickBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
-patrickBtn.Font = baseFont
-patrickBtn.ZIndex = 11
-patrickBtn.Parent = bdMenu
-Instance.new("UICorner", patrickBtn).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", patrickBtn).Color = strokeCol
+-- ==================== TROLL ====================
+TrollTab:CreateSection("Troll")
 
-local spunchBtn = Instance.new("TextButton")
-spunchBtn.Size = UDim2.new(0.5, -15, 0, 36)
-spunchBtn.Position = UDim2.new(0.5, 5, 0, 45)
-spunchBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-spunchBtn.Text = "spunchbub"
-spunchBtn.TextColor3 = Color3.fromRGB(230, 220, 69)
-spunchBtn.Font = baseFont
-spunchBtn.ZIndex = 11
-spunchBtn.Parent = bdMenu
-Instance.new("UICorner", spunchBtn).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", spunchBtn).Color = strokeCol
-
-local closeBdBtn = Instance.new("TextButton")
-closeBdBtn.Size = UDim2.new(1, -20, 0, 28)
-closeBdBtn.Position = UDim2.new(0, 10, 1, -38)
-closeBdBtn.BackgroundColor3 = Color3.fromRGB(40, 25, 25)
-closeBdBtn.Text = "Cancel"
-closeBdBtn.TextColor3 = Color3.fromRGB(220, 100, 100)
-closeBdBtn.Font = baseFont
-closeBdBtn.ZIndex = 11
-closeBdBtn.Parent = bdMenu
-Instance.new("UICorner", closeBdBtn).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", closeBdBtn).Color = Color3.fromRGB(60,35,35)
-
-bdBtn.MouseButton1Click:Connect(function() bdMenu.Visible = not bdMenu.Visible end)
-closeBdBtn.MouseButton1Click:Connect(function() bdMenu.Visible = false end)
-
-patrickBtn.MouseButton1Click:Connect(function()
-    pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/m-photon/randomassthingy/refs/heads/main/thingy.lua"))() end)
-    bdMenu.Visible = false
-end)
-
-spunchBtn.MouseButton1Click:Connect(function()
-    pcall(function() loadstring(game:HttpGet("https://pastefy.app/20WaEl9u/raw", true))() end)
-    bdMenu.Visible = false
-end)
-
--- Server Side Executor
-local ssFrame = createPopup("Server Side Executor", UDim2.new(0, 340, 0, 240), UDim2.new(0.5, -170, 0.5, -120))
-
-local ssBox = Instance.new("TextBox")
-ssBox.Size = UDim2.new(1,-20,1,-90)
-ssBox.Position = UDim2.new(0,10,0,38)
-ssBox.BackgroundColor3 = Color3.fromRGB(15,15,17)
-ssBox.PlaceholderText = "-- paste code here"
-ssBox.TextColor3 = Color3.fromRGB(200,200,200)
-ssBox.MultiLine = true
-ssBox.ClearTextOnFocus = false
-ssBox.TextSize = 12
-ssBox.Font = baseFont
-ssBox.TextXAlignment = Enum.TextXAlignment.Left
-ssBox.TextYAlignment = Enum.TextYAlignment.Top
-ssBox.ZIndex = 11
-ssBox.Parent = ssFrame
-Instance.new("UICorner", ssBox).CornerRadius = UDim.new(0,4)
-Instance.new("UIStroke", ssBox).Color = strokeCol
-
-local execBtn = Instance.new("TextButton")
-execBtn.Size = UDim2.new(0.48,-5,0,32)
-execBtn.Position = UDim2.new(0,10,1,-42)
-execBtn.BackgroundColor3 = Color3.fromRGB(40,70,40)
-execBtn.Text = "Execute"
-execBtn.TextColor3 = Color3.fromRGB(220,255,220)
-execBtn.Font = baseFont
-execBtn.ZIndex = 11
-execBtn.Parent = ssFrame
-Instance.new("UICorner", execBtn).CornerRadius = UDim.new(0,4)
-
-local closeSS = Instance.new("TextButton")
-closeSS.Size = UDim2.new(0.48,-5,0,32)
-closeSS.Position = UDim2.new(0.52,5,1,-42)
-closeSS.BackgroundColor3 = Color3.fromRGB(70,30,30)
-closeSS.Text = "Close"
-closeSS.TextColor3 = Color3.fromRGB(255,180,180)
-closeSS.Font = baseFont
-closeSS.ZIndex = 11
-closeSS.Parent = ssFrame
-Instance.new("UICorner", closeSS).CornerRadius = UDim.new(0,4)
-
-bServerSide.MouseButton1Click:Connect(function() ssFrame.Visible = not ssFrame.Visible end)
-closeSS.MouseButton1Click:Connect(function() ssFrame.Visible = false end)
-
-execBtn.MouseButton1Click:Connect(function()
-    local code = ssBox.Text
-    if code and code ~= "" then
-        local func, err = loadstring(code)
-        if func then pcall(func) else warn("Execution Error:", err) end
-    end
-end)
-
--- Target Menu
-local tMenu = createPopup("Target Config", UDim2.new(0, 200, 1, 0), UDim2.new(0, -210, 0, 0))
-local tBox = Instance.new("TextBox")
-tBox.Size = UDim2.new(1, -20, 0, 36)
-tBox.Position = UDim2.new(0, 10, 0, 45)
-tBox.BackgroundColor3 = Color3.fromRGB(15, 15, 17)
-tBox.PlaceholderText = "Type name & Enter..."
-tBox.TextColor3 = Color3.fromRGB(200, 200, 200)
-tBox.Font = baseFont
-tBox.TextSize = 12
-tBox.ZIndex = 11
-tBox.Parent = tMenu
-Instance.new("UICorner", tBox).CornerRadius = UDim.new(0, 4)
-Instance.new("UIStroke", tBox).Color = strokeCol
-local targetAction = nil
-
--- Server Intel Menu
-local sMenu = createPopup("Server Intel", UDim2.new(0, 200, 1, 0), UDim2.new(1, 10, 0, 0))
-local sScroll = Instance.new("ScrollingFrame")
-sScroll.Size = UDim2.new(1, -10, 1, -35)
-sScroll.Position = UDim2.new(0, 5, 0, 35)
-sScroll.BackgroundTransparency = 1
-sScroll.ScrollBarThickness = 2
-sScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-sScroll.ZIndex = 11
-sScroll.Parent = sMenu
-Instance.new("UIListLayout", sScroll).Padding = UDim.new(0, 4)
-local sideOpen = false
-
-local function refreshIntel()
-    for _,v in pairs(sScroll:GetChildren()) do
-        if v:IsA("TextLabel") then v:Destroy() end
-    end
-    for _,p in pairs(plrs:GetPlayers()) do
-        local d = os.date("%Y-%m-%d", os.time() - (p.AccountAge * 86400))
-        local l = Instance.new("TextLabel")
-        l.Size = UDim2.new(1, 0, 0, 34)
-        l.BackgroundTransparency = 1
-        l.Text = p.Name .. "\n<font color='#888888'>" .. d .. "</font>"
-        l.TextColor3 = Color3.fromRGB(220, 220, 220)
-        l.TextSize = 12
-        l.Font = baseFont
-        l.RichText = true
-        l.ZIndex = 11
-        l.TextXAlignment = Enum.TextXAlignment.Left
-        l.Parent = sScroll
-    end
-end
-
-bI.MouseButton1Click:Connect(function()
-    sideOpen = not sideOpen
-    sMenu.Visible = sideOpen
-    bI.BackgroundColor3 = sideOpen and colArmed or colOff
-    if sideOpen then refreshIntel() end
-end)
-
--- === 4. FEATURE TOGGLE REGISTRY ===
-local function tog(btn, key, callback)
-    btn.MouseButton1Click:Connect(function()
-        if state[key] == "disabled" then
-            state[key] = "active"
-            btn.BackgroundColor3 = colOn
-        else
-            state[key] = "disabled"
-            btn.BackgroundColor3 = colOff
-            if key == "speed" or key == "jump" then
-                if lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
-                    local h = lp.Character:FindFirstChildOfClass("Humanoid")
-                    if key == "speed" then h.WalkSpeed = 16 end
-                    if key == "jump" then h.JumpPower = 50 end
-                end
-            end
-        end
-        if callback then pcall(function() callback(state[key] == "active") end) end
-    end)
-end
-
-tog(bFly, "fly")
-tog(bSpeed, "speed")
-tog(bJump, "jump")
-tog(bNoclip, "noclip")
-tog(bGod, "god")
-
-tog(bFullbright, "fullbright", function(active)
-    lighting.Brightness = active and 2 or 1
-    lighting.Ambient = active and Color3.fromRGB(255,255,255) or Color3.fromRGB(128,128,128)
-end)
-
-tog(bNoFog, "nofog", function(active)
-    lighting.FogEnd = active and 999999 or 1000
-end)
-
-local function safeLoad(url)
-    pcall(function() loadstring(game:HttpGet(url))() end)
-end
-
-bIY.MouseButton1Click:Connect(function() safeLoad('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source') end)
-bDex.MouseButton1Click:Connect(function() safeLoad('https://raw.githubusercontent.com/infyiff/backup/main/dex.lua') end)
-bEspHub.MouseButton1Click:Connect(function() safeLoad('https://raw.githubusercontent.com/ic3w0lf22/Unnamed-ESP/master/UnnamedESP.lua') end)
-bRejoin.MouseButton1Click:Connect(function() ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, lp) end)
-bHop.MouseButton1Click:Connect(function() ts:Teleport(game.PlaceId, lp) end)
-
--- === 5. CORE EXPLOIT SYSTEMS ===
-local espFolder = Instance.new("Folder", core)
-espFolder.Name = "nos_esp_folder"
-
-local function upESP()
-    if state.e ~= "active" then
-        espFolder:ClearAllChildren()
-        return
-    end
-    for _,v in pairs(espFolder:GetChildren()) do
-        local p = plrs:FindFirstChild(v.Name)
-        if not p or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") then 
-            v:Destroy() 
+TrollTab:CreateToggle({
+    Name = "Auto Jerkoff",
+    CurrentValue = false,
+    Flag = "AutoJerkoff",
+    Callback = function(v)
+        if v then
+            Rayfield:Notify({Title = "Auto Jerkoff ON", Content = "Go crazy son!!", Duration = 5})
         end
     end
-    for _,p in pairs(plrs:GetPlayers()) do
-        if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local hl = espFolder:FindFirstChild(p.Name)
-            if not hl then
-                hl = Instance.new("Highlight")
-                hl.Name = p.Name
-                hl.FillColor = Color3.fromRGB(255,50,50)
-                hl.OutlineColor = Color3.fromRGB(255,255,255)
-                hl.DepthMode = "AlwaysOnTop"
-                hl.Parent = espFolder
-            end
-            hl.Adornee = p.Character 
-        end
-    end
-end
+})
 
-local lines = {}
-local hasDraw = pcall(function() local t = Drawing.new("Line"); if t then t:Remove() end end)
+TrollTab:CreateToggle({ Name = "Animation Spam", CurrentValue = false, Flag = "AnimSpam", Callback = function(v) end })
+TrollTab:CreateToggle({ Name = "Sit Spam", CurrentValue = false, Flag = "SitSpam", Callback = function(v) end })
+TrollTab:CreateButton({ Name = "Remove All Tools", Callback = function()
+    for _, tool in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do tool:Destroy() end
+end })
+TrollTab:CreateButton({ Name = "Headless + Korblox (Client)", Callback = function() end })
 
-local function upTracers()
-    if not hasDraw or state.t ~= "active" then
-        for _,v in pairs(lines) do pcall(function() v.Visible = false end) end
-        return
-    end
-    local currentCam = ws.CurrentCamera -- Dynamically checked to prevent respawn breakage
-    for _,p in pairs(plrs:GetPlayers()) do
-        if p ~= lp then
-            if not lines[p] then
-                pcall(function()
-                    local l = Drawing.new("Line")
-                    l.Color = Color3.fromRGB(255,50,50)
-                    l.Thickness = 1
-                    lines[p] = l
-                end)
-            end
-            local l = lines[p]
-            if l then
-                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and currentCam then
-                    local pos, vis = currentCam:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
-                    if vis then
-                        l.From = Vector2.new(currentCam.ViewportSize.X/2, currentCam.ViewportSize.Y)
-                        l.To = Vector2.new(pos.X, pos.Y)
-                        l.Visible = true
-                    else l.Visible = false end
-                else l.Visible = false end
-            end
-        end
-    end
-end
+-- ==================== EXPLOITS ====================
+ExploitsTab:CreateSection("Exploits")
 
-plrs.PlayerRemoving:Connect(function(p)
-    if lines[p] then pcall(function() lines[p]:Remove() end) lines[p]=nil end
-end)
+ExploitsTab:CreateToggle({ Name = "FPS Unlocker", CurrentValue = false, Flag = "FPSUnlock", Callback = function(v) 
+    setfpscap(v and 999 or 60) 
+end })
+ExploitsTab:CreateButton({ Name = "Rejoin", Callback = function() game.TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer) end })
 
--- Main Optimization Loop
-task.spawn(function()
-    while true do
-        task.wait(0.05) 
-        pcall(upESP)
-        pcall(upTracers)
-        
-        if lp.Character then
-            local h = lp.Character:FindFirstChildOfClass("Humanoid")
-            if h then
-                if state.speed == "active" then h.WalkSpeed = 100 end
-                if state.jump == "active" then h.JumpPower = 100 end
-            end
-        end
-    end
-end)
+-- ==================== SETTINGS ====================
+SettingsTab:CreateSection("Settings")
+SettingsTab:CreateButton({ Name = "Destroy GUI", Callback = function() Rayfield:Destroy() end })
 
-rs.Stepped:Connect(function()
-    if state.noclip == "active" and lp.Character then
-        for _,v in pairs(lp.Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
-    end
-end)
-
-local flySpeed = 50
-rs.RenderStepped:Connect(function()
-    local currentCam = ws.CurrentCamera
-    if state.fly == "active" and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character:FindFirstChildOfClass("Humanoid") and currentCam then
-        local hrp = lp.Character.HumanoidRootPart
-        local hum = lp.Character:FindFirstChildOfClass("Humanoid")
-        
-        local bv = hrp:FindFirstChild("NosFlyBv")
-        local bg = hrp:FindFirstChild("NosFlyBg")
-        
-        if not bv then
-            bv = Instance.new("BodyVelocity")
-            bv.Name = "NosFlyBv"
-            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            bv.Parent = hrp
-        end
-        
-        if not bg then
-            bg = Instance.new("BodyGyro")
-            bg.Name = "NosFlyBg"
-            bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-            bg.P = 9e4
-            bg.Parent = hrp
-        end
-        
-        hum.PlatformStand = true 
-        
-        local moveDir = Vector3.new(0,0,0)
-        if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + currentCam.CFrame.LookVector end
-        if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - currentCam.CFrame.LookVector end
-        if uis:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - currentCam.CFrame.RightVector end
-        if uis:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + currentCam.CFrame.RightVector end
-        
-        bg.CFrame = currentCam.CFrame
-        bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * flySpeed or Vector3.new(0,0,0)
-    else
-        if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = lp.Character.HumanoidRootPart
-            local hum = lp.Character:FindFirstChildOfClass("Humanoid")
-            local bv = hrp:FindFirstChild("NosFlyBv")
-            local bg = hrp:FindFirstChild("NosFlyBg")
-            
-            if bv then bv:Destroy() end
-            if bg then bg:Destroy() end
-            if hum and state.fly == "disabled" then hum.PlatformStand = false end
-        end
-    end
-end)
-
-bGhost.MouseButton1Click:Connect(function()
-    state.ghost = state.ghost == "disabled" and "active" or "disabled"
-    bGhost.BackgroundColor3 = state.ghost == "active" and colOn or colOff
-    if lp.Character then
-        for _,p in pairs(lp.Character:GetDescendants()) do
-            if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then 
-                p.Transparency = state.ghost == "active" and 0.5 or 0
-            elseif p:IsA("Decal") then 
-                p.Transparency = state.ghost == "active" and 0.5 or 0 
-            end
-        end
-    end
-end)
-
--- Target Locators
-local function getTgt(hrp)
-    local t, d = nil, math.huge
-    for _,p in pairs(plrs:GetPlayers()) do
-        if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (hrp.Position - p.Character.HumanoidRootPart.Position).Magnitude
-            if dist < d then d = dist; t = p.Character end
-        end
-    end
-    return t
-end
-
-local function getClosest()
-    if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-        local c = getTgt(lp.Character.HumanoidRootPart)
-        if c then return plrs:GetPlayerFromCharacter(c) end
-    end
-end
-
-local function getPlr()
-    local txt = tBox.Text:lower()
-    if txt == "" then return getClosest() end
-    for _,p in pairs(plrs:GetPlayers()) do
-        if p.Name:lower():sub(1,#txt) == txt or p.DisplayName:lower():sub(1,#txt) == txt then
-            return p
-        end
-    end
-end
-
-bGoto.MouseButton1Click:Connect(function()
-    if targetAction == "goto" and tMenu.Visible then
-        tMenu.Visible = false; targetAction = nil; bGoto.BackgroundColor3 = colOff
-    else
-        tMenu.Visible = true; targetAction = "goto"; bGoto.BackgroundColor3 = colArmed; bSpec.BackgroundColor3 = colOff; tBox:CaptureFocus()
-    end
-end)
-
-bSpec.MouseButton1Click:Connect(function()
-    local currentCam = ws.CurrentCamera
-    if state.spectate == "active" then
-        if lp.Character and lp.Character:FindFirstChild("Humanoid") and currentCam then 
-            currentCam.CameraSubject = lp.Character.Humanoid 
-        end
-        state.spectate = "disabled"; bSpec.BackgroundColor3 = colOff; bSpec.Text = "Spectate Target"; tMenu.Visible = false; targetAction = nil
-    else
-        if targetAction == "spectate" and tMenu.Visible then
-            tMenu.Visible = false; targetAction = nil; bSpec.BackgroundColor3 = colOff
-        else
-            tMenu.Visible = true; targetAction = "spectate"; bSpec.BackgroundColor3 = colArmed; bGoto.BackgroundColor3 = colOff; tBox:CaptureFocus()
-        end
-    end
-end)
-
-tBox.FocusLost:Connect(function(ent)
-    local currentCam = ws.CurrentCamera
-    if ent then
-        local t = getPlr()
-        if t then
-            if targetAction == "goto" and t.Character and lp.Character then
-                lp.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-            elseif targetAction == "spectate" and t.Character and currentCam then
-                currentCam.CameraSubject = t.Character.Humanoid
-                state.spectate = "active"
-                bSpec.BackgroundColor3 = colOn
-                bSpec.Text = "Stop Spectating"
-            end
-        end
-        tMenu.Visible = false; targetAction = nil; bGoto.BackgroundColor3 = colOff; tBox.Text = ""
-    end
-end)
-
-local function doFling()
-    if state.v ~= "armed" or state.fling then return end
-    local c = lp.Character
-    if not c or not c:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = c.HumanoidRootPart
-    local t = getTgt(hrp)
-    if not t then return end
-    local tp = t:FindFirstChild("HumanoidRootPart") or t:FindFirstChild("Torso")
-    if not tp then return end
-
-    state.fling = true
-    bV.BackgroundColor3 = colOn
-
-    local oldcf = hrp.CFrame
-    local bav = Instance.new("BodyAngularVelocity")
-    bav.MaxTorque = Vector3.new(math.huge,math.huge,math.huge)
-    bav.AngularVelocity = Vector3.new(0,999999,0)
-    bav.Parent = hrp
-
-    local bv = Instance.new("BodyVelocity")
-    bv.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
-    bv.Velocity = Vector3.new(99999,99999,99999)
-    bv.Parent = hrp
-
-    local st = tick()
-    local con; con = rs.Heartbeat:Connect(function()
-        if tick()-st > 1.5 or not tp.Parent then
-            con:Disconnect()
-            pcall(function() bav:Destroy() bv:Destroy() end)
-            if hrp then hrp.CFrame = oldcf end
-            state.fling = false
-            bV.BackgroundColor3 = colArmed 
-            return
-        end
-        hrp.CFrame = tp.CFrame * CFrame.new(math.random(-1,1)*0.05, math.random(-1,1)*0.05, math.random(-1,1)*0.05)
-    end)
-end
-
--- === 6. INPUT AND BINDS ===
-uis.InputBegan:Connect(function(k, g)
-    if g then return end
-    if k.KeyCode == Enum.KeyCode.E then
-        if state.e == "armed" then state.e = "active"; bE.BackgroundColor3 = colOn 
-        elseif state.e == "active" then state.e = "armed"; bE.BackgroundColor3 = colArmed end
-    elseif k.KeyCode == Enum.KeyCode.T then
-        if state.t == "armed" then state.t = "active"; bT.BackgroundColor3 = colOn 
-        elseif state.t == "active" then state.t = "armed"; bT.BackgroundColor3 = colArmed end
-    elseif k.KeyCode == Enum.KeyCode.V then
-        if state.v == "armed" then doFling() end
-    end
-end)
-
-bE.MouseButton1Click:Connect(function() state.e = state.e == "disabled" and "armed" or "disabled"; bE.BackgroundColor3 = state.e == "armed" and colArmed or colOff end)
-bT.MouseButton1Click:Connect(function() state.t = state.t == "disabled" and "armed" or "disabled"; bT.BackgroundColor3 = state.t == "armed" and colArmed or colOff end)
-bV.MouseButton1Click:Connect(function() state.v = state.v == "disabled" and "armed" or "disabled"; bV.BackgroundColor3 = state.v == "armed" and colArmed or colOff end)
-
-local dragging = false
-local dragInput, dragStart, startPos
-
-topbar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = main.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
-end)
-
-topbar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-uis.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
-print("nos_dywll loaded - Deduplicated and Hardened")
+Rayfield:Notify({
+    Title = "Dywyll Cmenu Loaded",
+    Content = "Clean version. All filler removed.",
+    Duration = 8,
+    Image = 4483362458
+})
