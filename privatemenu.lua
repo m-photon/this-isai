@@ -1,4 +1,5 @@
--- nos_dywll private menu
+-- nos_dywll private menu | larpwtf (FLY ENGINE FIXED)
+-- discord.gg/larpwtf
 
 local uis = game:GetService("UserInputService")
 local plrs = game:GetService("Players")
@@ -262,6 +263,16 @@ Instance.new("UIStroke", closeBdBtn).Color = Color3.fromRGB(60,35,35)
 bdBtn.MouseButton1Click:Connect(function() bdMenu.Visible = not bdMenu.Visible end)
 closeBdBtn.MouseButton1Click:Connect(function() bdMenu.Visible = false end)
 
+patrickBtn.MouseButton1Click:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/m-photon/randomassthingy/refs/heads/main/thingy.lua"))() end)
+    bdMenu.Visible = false
+end)
+
+spunchBtn.MouseButton1Click:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/20WaEl9u/raw", true))() end)
+    bdMenu.Visible = false
+end)
+
 -- === SERVER SIDE EXECUTOR ===
 local ssFrame = createPopup("Server Side Executor", UDim2.new(0, 340, 0, 240), UDim2.new(0.5, -170, 0.5, -120))
 
@@ -269,7 +280,7 @@ local ssBox = Instance.new("TextBox")
 ssBox.Size = UDim2.new(1,-20,1,-90)
 ssBox.Position = UDim2.new(0,10,0,38)
 ssBox.BackgroundColor3 = Color3.fromRGB(15,15,17)
-ssBox.PlaceholderText = "-- paste server code"
+ssBox.PlaceholderText = "-- paste code here"
 ssBox.TextColor3 = Color3.fromRGB(200,200,200)
 ssBox.MultiLine = true
 ssBox.ClearTextOnFocus = false
@@ -307,11 +318,22 @@ Instance.new("UICorner", closeSS).CornerRadius = UDim.new(0,4)
 bServerSide.MouseButton1Click:Connect(function() ssFrame.Visible = not ssFrame.Visible end)
 closeSS.MouseButton1Click:Connect(function() ssFrame.Visible = false end)
 
+execBtn.MouseButton1Click:Connect(function()
+    local code = ssBox.Text
+    if code and code ~= "" then
+        local func, err = loadstring(code)
+        if func then
+            pcall(func)
+        else
+            warn("Execution Error:", err)
+        end
+    end
+end)
+
 -- Other Popups
 local tMenu = createPopup("Target Config", UDim2.new(0, 200, 1, 0), UDim2.new(0, -210, 0, 0))
 local sMenu = createPopup("Server Intel", UDim2.new(0, 200, 1, 0), UDim2.new(1, 10, 0, 0))
 
--- Target Box
 local tBox = Instance.new("TextBox")
 tBox.Size = UDim2.new(1, -20, 0, 36)
 tBox.Position = UDim2.new(0, 10, 0, 45)
@@ -325,7 +347,6 @@ tBox.Parent = tMenu
 Instance.new("UICorner", tBox).CornerRadius = UDim.new(0, 4)
 Instance.new("UIStroke", tBox).Color = strokeCol
 
--- Intel Scroll
 local sScroll = Instance.new("ScrollingFrame")
 sScroll.Size = UDim2.new(1, -10, 1, -35)
 sScroll.Position = UDim2.new(0, 5, 0, 35)
@@ -402,7 +423,6 @@ tog(bNoFog, "nofog", function(active)
     lighting.FogEnd = active and 999999 or 1000
 end)
 
--- Safe External Loaders
 local function safeLoad(url)
     pcall(function() loadstring(game:HttpGet(url))() end)
 end
@@ -413,7 +433,7 @@ bEspHub.MouseButton1Click:Connect(function() safeLoad('https://raw.githubusercon
 bRejoin.MouseButton1Click:Connect(function() ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, lp) end)
 bHop.MouseButton1Click:Connect(function() ts:Teleport(game.PlaceId, lp) end)
 
--- ESP System (Bug Patched - Adornee Updates Per Frame)
+-- ESP System 
 local espFolder = Instance.new("Folder", core)
 espFolder.Name = "nos_esp_folder"
 
@@ -422,14 +442,12 @@ local function upESP()
         espFolder:ClearAllChildren()
         return
     end
-    -- Cleanup invalid highlights
     for _,v in pairs(espFolder:GetChildren()) do
         local p = plrs:FindFirstChild(v.Name)
         if not p or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") then 
             v:Destroy() 
         end
     end
-    -- Create new ones and forcefully update existing Adornees
     for _,p in pairs(plrs:GetPlayers()) do
         if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             local hl = espFolder:FindFirstChild(p.Name)
@@ -441,7 +459,7 @@ local function upESP()
                 hl.DepthMode = "AlwaysOnTop"
                 hl.Parent = espFolder
             end
-            hl.Adornee = p.Character -- Fixed: This now runs every frame so respawns don't break ESP
+            hl.Adornee = p.Character 
         end
     end
 end
@@ -513,18 +531,56 @@ rs.Stepped:Connect(function()
     end
 end)
 
+-- === ROBUST FLY ENGINE FIX ===
 local flySpeed = 50
-rs.Heartbeat:Connect(function()
-    if state.fly == "active" and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+rs.RenderStepped:Connect(function()
+    if state.fly == "active" and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") and lp.Character:FindFirstChildOfClass("Humanoid") then
         local hrp = lp.Character.HumanoidRootPart
-        local moveDir = Vector3.new(0,0,0)
+        local hum = lp.Character:FindFirstChildOfClass("Humanoid")
         
+        -- Secure the player's physical state in the air
+        local bv = hrp:FindFirstChild("NosFlyBv")
+        local bg = hrp:FindFirstChild("NosFlyBg")
+        
+        if not bv then
+            bv = Instance.new("BodyVelocity")
+            bv.Name = "NosFlyBv"
+            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.Parent = hrp
+        end
+        
+        if not bg then
+            bg = Instance.new("BodyGyro")
+            bg.Name = "NosFlyBg"
+            bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            bg.P = 9e4
+            bg.Parent = hrp
+        end
+        
+        hum.PlatformStand = true -- Prevents the physics engine from applying falling animations
+        
+        local moveDir = Vector3.new(0,0,0)
         if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
         if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
         if uis:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
         if uis:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
         
-        hrp.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * flySpeed or Vector3.new(0,0,0)
+        bg.CFrame = cam.CFrame
+        bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * flySpeed or Vector3.new(0,0,0)
+    else
+        -- Cleanly strip the flight items if disabled or dead
+        if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = lp.Character.HumanoidRootPart
+            local hum = lp.Character:FindFirstChildOfClass("Humanoid")
+            local bv = hrp:FindFirstChild("NosFlyBv")
+            local bg = hrp:FindFirstChild("NosFlyBg")
+            
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
+            if hum and state.fly == "disabled" then 
+                hum.PlatformStand = false 
+            end
+        end
     end
 end)
 
@@ -642,14 +698,14 @@ local function doFling()
             pcall(function() bav:Destroy() bv:Destroy() end)
             if hrp then hrp.CFrame = oldcf end
             state.fling = false
-            bV.BackgroundColor3 = colArmed -- Fixed: Used to revert to colOff and break visual flow
+            bV.BackgroundColor3 = colArmed 
             return
         end
         hrp.CFrame = tp.CFrame * CFrame.new(math.random(-1,1)*0.05, math.random(-1,1)*0.05, math.random(-1,1)*0.05)
     end)
 end
 
--- === KEYBINDS LOGIC (FIXED) ===
+-- KEYBINDS LOGIC
 uis.InputBegan:Connect(function(k, g)
     if g then return end
     
@@ -676,7 +732,6 @@ uis.InputBegan:Connect(function(k, g)
     end
 end)
 
--- Button toggles for the Armed states
 bE.MouseButton1Click:Connect(function() state.e = state.e == "disabled" and "armed" or "disabled"; bE.BackgroundColor3 = state.e == "armed" and colArmed or colOff end)
 bT.MouseButton1Click:Connect(function() state.t = state.t == "disabled" and "armed" or "disabled"; bT.BackgroundColor3 = state.t == "armed" and colArmed or colOff end)
 bV.MouseButton1Click:Connect(function() state.v = state.v == "disabled" and "armed" or "disabled"; bV.BackgroundColor3 = state.v == "armed" and colArmed or colOff end)
@@ -710,4 +765,4 @@ uis.InputChanged:Connect(function(input)
 end)
 
 closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
-print("nos_dywll loaded - Keybinds Patched")
+print("nos_dywll loaded - Flight Engine Perfected")
