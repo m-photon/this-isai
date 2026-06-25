@@ -6,13 +6,18 @@ local plrs = game:GetService("Players")
 local rs = game:GetService("RunService")
 local ts = game:GetService("TeleportService")
 local ws = game:GetService("Workspace")
+local lighting = game:GetService("Lighting")
 local lp = plrs.LocalPlayer
 local cam = ws.CurrentCamera
 
 local core
-if gethui then core = gethui()
-elseif syn and syn.protect_gui then core = lp:WaitForChild("PlayerGui")
-else core = game:GetService("CoreGui") or lp:WaitForChild("PlayerGui") end
+if gethui then 
+    core = gethui()
+elseif syn and syn.protect_gui then 
+    core = lp:WaitForChild("PlayerGui")
+else 
+    core = game:GetService("CoreGui") or lp:WaitForChild("PlayerGui") 
+end
 
 if core:FindFirstChild("nos_dywll_PrivateMenu") then
     pcall(function() core.nos_dywll_PrivateMenu:Destroy() end)
@@ -177,7 +182,7 @@ for i,v in ipairs(btns) do v.LayoutOrder = i end
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
     local f = searchBox.Text:lower()
     for _,b in pairs(btns) do
-        b.Visible = (f == "" or b.Text:lower():find(f))
+        b.Visible = (f == "" or b.Text:lower():find(f, 1, true) ~= nil)
     end
 end)
 
@@ -238,6 +243,13 @@ closeBdBtn.Parent = bdMenu
 Instance.new("UICorner", closeBdBtn).CornerRadius = UDim.new(0, 4)
 Instance.new("UIStroke", closeBdBtn).Color = Color3.fromRGB(60,35,35)
 
+bdBtn.MouseButton1Click:Connect(function()
+    bdMenu.Visible = not bdMenu.Visible
+end)
+closeBdBtn.MouseButton1Click:Connect(function()
+    bdMenu.Visible = false
+end)
+
 -- server side executor
 local ssFrame = Instance.new("Frame")
 ssFrame.Size = UDim2.new(0, 340, 0, 240)
@@ -293,6 +305,13 @@ closeSS.TextColor3 = Color3.fromRGB(255,180,180)
 closeSS.Font = baseFont
 closeSS.Parent = ssFrame
 Instance.new("UICorner", closeSS).CornerRadius = UDim.new(0,4)
+
+bServerSide.MouseButton1Click:Connect(function()
+    ssFrame.Visible = not ssFrame.Visible
+end)
+closeSS.MouseButton1Click:Connect(function()
+    ssFrame.Visible = false
+end)
 
 -- target menu
 local targetAction = nil
@@ -355,7 +374,8 @@ sMenu.BackgroundColor3 = bgCol
 sMenu.Visible = false
 sMenu.Parent = main
 Instance.new("UICorner", sMenu).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", sMenu).Color = strokeCol
+sMenu.InnerStroke = Instance.new("UIStroke", sMenu)
+sMenu.InnerStroke.Color = strokeCol
 
 local sTitle = Instance.new("TextLabel")
 sTitle.Size = UDim2.new(1, -20, 0, 30)
@@ -432,7 +452,12 @@ end
 
 -- tracers
 local lines = {}
-local hasDraw = pcall(function() return Drawing.new("Line") end)
+local hasDraw = false
+pcall(function() 
+    local t = Drawing.new("Line")
+    if t then hasDraw = true t:Remove() end
+end)
+
 local function upTracers()
     if not hasDraw or state.t ~= "active" then
         for _,v in pairs(lines) do pcall(function() v.Visible = false end) end
@@ -481,14 +506,35 @@ end)
 rs.RenderStepped:Connect(function()
     pcall(upESP)
     pcall(upTracers)
-    
-    if lp.Character then
-        local h = lp.Character:FindFirstChildOfClass("Humanoid")
-        local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
-        if h then
-            h.WalkSpeed = state.speed == "active" and 100 or 16
-            h.JumpPower = state.jump == "active" and 100 or 50
+end)
+
+-- physics modifications logic loop
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if lp.Character then
+            local h = lp.Character:FindFirstChildOfClass("Humanoid")
+            if h then
+                if state.speed == "active" then h.WalkSpeed = 100 end
+                if state.jump == "active" then h.JumpPower = 100 end
+            end
         end
+    end
+end)
+
+-- Fly Engine Implementation
+local flySpeed = 50
+rs.Heartbeat:Connect(function()
+    if state.fly == "active" and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = lp.Character.HumanoidRootPart
+        local moveDir = Vector3.new(0,0,0)
+        
+        if uis:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
+        
+        hrp.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * flySpeed or Vector3.new(0,0,0)
     end
 end)
 
@@ -557,7 +603,7 @@ local function getPlr()
 end
 
 -- toggle helper
-local function tog(b, k)
+local function tog(b, k, callback)
     b.MouseButton1Click:Connect(function()
         if state[k] == "disabled" then
             state[k] = "active"
@@ -565,7 +611,13 @@ local function tog(b, k)
         else
             state[k] = "disabled"
             b.BackgroundColor3 = colOff
+            if lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
+                local h = lp.Character:FindFirstChildOfClass("Humanoid")
+                if k == "speed" then h.WalkSpeed = 16 end
+                if k == "jump" then h.JumpPower = 50 end
+            end
         end
+        if callback then callback(state[k] == "active") end
     end)
 end
 
@@ -574,8 +626,26 @@ tog(bSpeed, "speed")
 tog(bJump, "jump")
 tog(bNoclip, "noclip")
 tog(bGod, "god")
-tog(bFullbright, "fullbright")
-tog(bNoFog, "nofog")
+
+tog(bFullbright, "fullbright", function(active)
+    if active then
+        lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        lighting.Brightness = 2
+    else
+        lighting.Ambient = Color3.fromRGB(128, 128, 128)
+        lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        lighting.Brightness = 1
+    end
+end)
+
+tog(bNoFog, "nofog", function(active)
+    if active then
+        lighting.FogEnd = 999999
+    else
+        lighting.FogEnd = 1000
+    end
+end)
 
 bE.MouseButton1Click:Connect(function()
     if state.e == "disabled" then 
@@ -752,12 +822,15 @@ local function doFling()
     bV.BackgroundColor3 = colOn
 
     local oldcf = hrp.CFrame
-    local bav = Instance.new("BodyAngularVelocity", hrp)
+    local bav = Instance.new("BodyAngularVelocity")
     bav.MaxTorque = Vector3.new(math.huge,math.huge,math.huge)
     bav.AngularVelocity = Vector3.new(0,999999,0)
-    local bv = Instance.new("BodyVelocity", hrp)
+    bav.Parent = hrp
+
+    local bv = Instance.new("BodyVelocity")
     bv.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
     bv.Velocity = Vector3.new(99999,99999,99999)
+    bv.Parent = hrp
 
     local st = tick()
     local con; con = rs.Heartbeat:Connect(function()
