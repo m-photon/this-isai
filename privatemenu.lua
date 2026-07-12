@@ -1,126 +1,288 @@
--- Dywyll Cmenu v4.5 CLEAN | larpwtf
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
-local Window = Rayfield:CreateWindow({
-    Name = "Dywyll Cmenu v4.5",
-    LoadingTitle = "Dywyll Cmenu",
-    LoadingSubtitle = "Chaos Edition",
-    ConfigurationSaving = { Enabled = true, FolderName = "DywyllCmenu", FileName = "Config" },
-    Discord = { Enabled = true, Invite = "larpwtf", RememberJoins = true },
-    KeySystem = false
+
+local Window = OrionLib:MakeWindow({
+    Name = "Item Manager by JJP",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "JJPGui"
 })
 
-local MainTab = Window:CreateTab("Main", 4483362458)
-local CombatTab = Window:CreateTab("Combat", 4483362458)
-local MovementTab = Window:CreateTab("Movement", 4483362458)
-local VisualsTab = Window:CreateTab("Visuals", 4483362458)
-local TeleportTab = Window:CreateTab("Teleport", 4483362458)
-local MiscTab = Window:CreateTab("Misc", 4483362458)
-local TrollTab = Window:CreateTab("Troll", 4483362458)
-local ExploitsTab = Window:CreateTab("Exploits", 4483362458)
-local SettingsTab = Window:CreateTab("Settings", 4483362458)
 
--- ==================== MAIN ====================
-MainTab:CreateSection("Core")
+local Tab = Window:MakeTab({
+    Name = "Settings",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
-MainTab:CreateToggle({ Name = "Godmode", CurrentValue = false, Flag = "Godmode", Callback = function(v) end })
-MainTab:CreateButton({ Name = "Infinite Yield (Admin)", Callback = function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end })
-MainTab:CreateToggle({ Name = "Anti Kick", CurrentValue = false, Flag = "AntiKick", Callback = function(v) end })
+local teleportEnabled = false
+local nametagEnabled = false
+local useWebhook = false
+local webhookURL = ""
+local lastEKeyPressTime = 0
+local teleportConnection
+local currentTarget
+local teleportDistance = 15  
+local processedItems = {} 
+local ignoredItems = {} 
+local currentTargetStartTime = nil 
+local targetTimeout = 15
 
--- ==================== COMBAT ====================
-CombatTab:CreateSection("Combat")
 
-CombatTab:CreateToggle({ Name = "Silent Aim", CurrentValue = false, Flag = "SilentAim", Callback = function(v) end })
-CombatTab:CreateToggle({ Name = "Triggerbot", CurrentValue = false, Flag = "Triggerbot", Callback = function(v) end })
-CombatTab:CreateToggle({ Name = "Kill Aura", CurrentValue = false, Flag = "KillAura", Callback = function(v) end })
-CombatTab:CreateToggle({ Name = "Reach", CurrentValue = false, Flag = "Reach", Callback = function(v) end })
-CombatTab:CreateToggle({ Name = "Ragebot", CurrentValue = false, Flag = "Ragebot", Callback = function(v) end })
-CombatTab:CreateToggle({ Name = "Auto Clicker", CurrentValue = false, Flag = "AutoClicker", Callback = function(v) end })
-CombatTab:CreateSlider({ Name = "Hitbox Expander", Range = {1, 50}, Increment = 1, CurrentValue = 1, Flag = "Hitbox", Callback = function(v) end })
+local function createNametag(model, text)
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Adornee = model
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Size = UDim2.new(0, 75, 0, 15)
+    billboardGui.StudsOffset = Vector3.new(0, 3, 0)
 
--- ==================== MOVEMENT ====================
-MovementTab:CreateSection("Movement")
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Parent = billboardGui
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.Text = text
+    textLabel.TextScaled = true
 
-MovementTab:CreateToggle({ Name = "Fly", CurrentValue = false, Flag = "Fly", Callback = function(v) end })
-MovementTab:CreateToggle({ Name = "Noclip", CurrentValue = false, Flag = "Noclip", Callback = function(v) end })
-MovementTab:CreateToggle({ Name = "Infinite Jump", CurrentValue = false, Flag = "InfJump", Callback = function(v) end })
-MovementTab:CreateToggle({ Name = "Bunny Hop", CurrentValue = false, Flag = "Bhop", Callback = function(v) end })
+    billboardGui.Parent = model
+end
 
-MovementTab:CreateSlider({ Name = "WalkSpeed", Range = {16, 500}, Increment = 1, CurrentValue = 16, Flag = "WalkSpeed", Callback = function(v)
-    local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
-    if hum then hum.WalkSpeed = v end
-end })
 
-MovementTab:CreateSlider({ Name = "JumpPower", Range = {50, 500}, Increment = 5, CurrentValue = 50, Flag = "JumpPower", Callback = function(v)
-    local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
-    if hum then hum.JumpPower = v end
-end })
+local function refreshNametags()
+    local itemsFolder = workspace:FindFirstChild("Item_Spawns") and workspace.Item_Spawns:FindFirstChild("Items")
+    if itemsFolder then
+        for _, item in pairs(itemsFolder:GetChildren()) do
+            if item:IsA("Model") then
+                
+                for _, child in pairs(item:GetChildren()) do
+                    if child:IsA("BillboardGui") then
+                        child:Destroy()
+                    end
+                end
 
--- ==================== VISUALS ====================
-VisualsTab:CreateSection("Visuals")
-
-VisualsTab:CreateToggle({ Name = "Full ESP", CurrentValue = false, Flag = "FullESP", Callback = function(v) end })
-VisualsTab:CreateToggle({ Name = "Chams / Wallhack", CurrentValue = false, Flag = "Chams", Callback = function(v) end })
-VisualsTab:CreateColorPicker({ Name = "ESP Color", Color = Color3.fromRGB(255,0,0), Flag = "ESPColor", Callback = function(c) end })
-VisualsTab:CreateToggle({ Name = "No Fog", CurrentValue = false, Flag = "NoFog", Callback = function(v) 
-    game.Lighting.FogEnd = v and 99999 or 100000 
-end })
-
--- ==================== TELEPORT ====================
-TeleportTab:CreateSection("Teleport")
-TeleportTab:CreateButton({ Name = "Teleport to Random Player", Callback = function()
-    local plrs = game.Players:GetPlayers()
-    local tgt = plrs[math.random(1, #plrs)]
-    if tgt and tgt.Character and tgt.Character:FindFirstChild("HumanoidRootPart") then
-        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = tgt.Character.HumanoidRootPart.CFrame
+                local proximityPrompt = item:FindFirstChildWhichIsA("ProximityPrompt")
+                if proximityPrompt then
+                    local objectText = proximityPrompt.ObjectText
+                    createNametag(item, objectText)
+                end
+            end
+        end
     end
-end })
-TeleportTab:CreateButton({ Name = "Server Hop", Callback = function() game.TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer) end })
+end
 
--- ==================== MISC ====================
-MiscTab:CreateSection("Misc")
 
-MiscTab:CreateToggle({ Name = "Chat Spam", CurrentValue = false, Flag = "ChatSpam", Callback = function(v) end })
-MiscTab:CreateToggle({ Name = "Spinbot", CurrentValue = false, Flag = "Spinbot", Callback = function(v) end })
-MiscTab:CreateToggle({ Name = "Fake Lag", CurrentValue = false, Flag = "FakeLag", Callback = function(v) end })
-MiscTab:CreateToggle({ Name = "Anti-AFK", CurrentValue = true, Flag = "AntiAFK", Callback = function(v) end })
+local function onNewModelAdded(model)
+    if model:IsA("Model") then
+        local proximityPrompt = model:FindFirstChildWhichIsA("ProximityPrompt")
+        if proximityPrompt then
+            local objectText = proximityPrompt.ObjectText
+            createNametag(model, objectText)
+        end
+    end
+end
 
--- ==================== TROLL ====================
-TrollTab:CreateSection("Troll")
 
-TrollTab:CreateToggle({
-    Name = "Auto Jerkoff",
-    CurrentValue = false,
-    Flag = "AutoJerkoff",
-    Callback = function(v)
-        if v then
-            Rayfield:Notify({Title = "Auto Jerkoff ON", Content = "Go crazy son!!", Duration = 5})
+local function findClosestModel()
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+    local itemsFolder = workspace:FindFirstChild("Item_Spawns") and workspace.Item_Spawns:FindFirstChild("Items")
+    if itemsFolder then
+        local closestModel
+        local closestDistance = math.huge
+
+        for _, item in pairs(itemsFolder:GetChildren()) do
+            if item:IsA("Model") and item.PrimaryPart and not ignoredItems[item] then
+                local distance = (item.PrimaryPart.Position - humanoidRootPart.Position).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestModel = item
+                end
+            end
+        end
+
+        return closestModel, closestDistance
+    end
+    return nil, nil
+end
+
+
+local function moveTowardsTarget()
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+
+    if not currentTarget or not currentTarget:IsDescendantOf(workspace) then
+        currentTarget, _ = findClosestModel()
+        currentTargetStartTime = tick()
+    end
+
+    if currentTarget and currentTarget.PrimaryPart then
+        local targetPosition = currentTarget.PrimaryPart.Position
+        local distanceToTarget = (targetPosition - humanoidRootPart.Position).Magnitude
+
+        if distanceToTarget > teleportDistance then
+            local direction = (targetPosition - humanoidRootPart.Position).Unit
+            humanoidRootPart.CFrame = humanoidRootPart.CFrame + direction * teleportDistance
+        else
+            humanoidRootPart.CFrame = CFrame.new(targetPosition)
+        end
+
+        
+        if tick() - currentTargetStartTime >= targetTimeout then
+            ignoredItems[currentTarget] = true
+            currentTarget = nil 
+            return 
+        end
+
+        
+        local currentTime = tick()
+        if currentTime - lastEKeyPressTime >= 1 then
+            lastEKeyPressTime = currentTime
+            local VirtualInputManager = game:GetService("VirtualInputManager")
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            wait(0.3)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+
+            
+            if useWebhook and webhookURL ~= "" and not processedItems[currentTarget] then
+                processedItems[currentTarget] = true
+
+                local itemName = "Unknown Item"
+                local proximityPrompt = currentTarget:FindFirstChildWhichIsA("ProximityPrompt")
+                if proximityPrompt then
+                    itemName = proximityPrompt.ObjectText
+                end
+
+                local backpack = game.Players.LocalPlayer.Backpack
+                local itemCount = {}
+                for _, item in pairs(backpack:GetChildren()) do
+                    itemCount[item.Name] = (itemCount[item.Name] or 0) + 1
+                end
+
+                local itemList = {}
+                for name, count in pairs(itemCount) do
+                    table.insert(itemList, name .. " x" .. count)
+                end
+
+                local embed = {
+                    title = "Got new item",
+                    description = itemName,
+                    color = 65280,
+                    fields = {
+                        { name = "Item inventory", value = table.concat(itemList, ", ") }
+                    },
+                    footer = { text = game.Players.LocalPlayer.Name }
+                }
+                SendMessageEMBED(webhookURL, embed)
+            end
+        end
+    end
+end
+
+
+
+Tab:AddToggle({
+    Name = "Enable Teleporting",
+    Default = false,
+    Callback = function(Value)
+        teleportEnabled = Value
+        if teleportEnabled then
+            teleportConnection = coroutine.wrap(function()
+                while teleportEnabled do
+                    moveTowardsTarget()
+                    wait(0.3)
+                end
+            end)
+            teleportConnection()
+        else
+            teleportConnection = nil
         end
     end
 })
 
-TrollTab:CreateToggle({ Name = "Animation Spam", CurrentValue = false, Flag = "AnimSpam", Callback = function(v) end })
-TrollTab:CreateToggle({ Name = "Sit Spam", CurrentValue = false, Flag = "SitSpam", Callback = function(v) end })
-TrollTab:CreateButton({ Name = "Remove All Tools", Callback = function()
-    for _, tool in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do tool:Destroy() end
-end })
-TrollTab:CreateButton({ Name = "Headless + Korblox (Client)", Callback = function() end })
+Tab:AddLabel("(RE ENABLE FEW TIMES IF DOESNT WORK INSTANTLY)")
 
--- ==================== EXPLOITS ====================
-ExploitsTab:CreateSection("Exploits")
-
-ExploitsTab:CreateToggle({ Name = "FPS Unlocker", CurrentValue = false, Flag = "FPSUnlock", Callback = function(v) 
-    setfpscap(v and 999 or 60) 
-end })
-ExploitsTab:CreateButton({ Name = "Rejoin", Callback = function() game.TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer) end })
-
--- ==================== SETTINGS ====================
-SettingsTab:CreateSection("Settings")
-SettingsTab:CreateButton({ Name = "Destroy GUI", Callback = function() Rayfield:Destroy() end })
-
-Rayfield:Notify({
-    Title = "Dywyll Cmenu Loaded",
-    Content = "Clean version. All filler removed.",
-    Duration = 8,
-    Image = 4483362458
+Tab:AddToggle({
+    Name = "Use Webhook",
+    Default = false,
+    Callback = function(Value)
+        useWebhook = Value
+    end
 })
+
+
+Tab:AddTextbox({
+    Name = "Webhook URL",
+    Default = "",
+    TextDisappear = false,
+    Callback = function(Value)
+        webhookURL = Value
+    end
+})
+
+
+function SendMessage(url, message)
+    local http = game:GetService("HttpService")
+    local headers = { ["Content-Type"] = "application/json" }
+    local data = { ["content"] = message }
+    local body = http:JSONEncode(data)
+    request({ Url = url, Method = "POST", Headers = headers, Body = body })
+    print("Message sent to webhook.")
+end
+
+function SendMessageEMBED(url, embed)
+    local http = game:GetService("HttpService")
+    local headers = { ["Content-Type"] = "application/json" }
+    local data = { ["embeds"] = { embed } }
+    local body = http:JSONEncode(data)
+    request({ Url = url, Method = "POST", Headers = headers, Body = body })
+    print("Embed sent to webhook.")
+end
+
+Tab:AddToggle({
+    Name = "Enable Nametags",
+    Default = false,
+    Callback = function(Value)
+        nametagEnabled = Value
+
+        if nametagEnabled then
+            refreshNametags()
+
+            
+            updateTask = task.spawn(function()
+                while nametagEnabled do
+                    refreshNametags()
+                    task.wait(2) 
+                end
+            end)
+        else
+            
+            nametagEnabled = false
+            if updateTask then
+                task.cancel(updateTask)
+            end
+
+           
+            local itemsFolder = workspace:FindFirstChild("Item_Spawns") and workspace.Item_Spawns:FindFirstChild("Items")
+            if itemsFolder then
+                for _, item in pairs(itemsFolder:GetChildren()) do
+                    for _, child in pairs(item:GetChildren()) do
+                        if child:IsA("BillboardGui") then
+                            child:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+    end
+})
+
+OrionLib:Init()
